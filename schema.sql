@@ -1,3 +1,4 @@
+DROP DATABASE photoshare;
 CREATE DATABASE IF NOT EXISTS photoshare;
 USE photoshare;
 DROP TABLE IF EXISTS Pictures CASCADE;
@@ -10,12 +11,13 @@ CREATE TABLE Users (
   CONSTRAINT users_pk PRIMARY KEY (user_id)
 );
 
-CREATE TABLE Friends (
-	user_id int4,
-    frnd_id int4,
-    PRIMARY KEY (user_id, frnd_id),
-    FOREIGN KEY (user_id) REFERENCES Users,
-    FOREIGN KEY (frnd_id) REFERENCES Users
+CREATE TABLE Albums (
+    A_id int4 auto_increment,
+    Name VARCHAR(255),
+    Owner_id int4,
+    CrDate TIMESTAMP,
+    FOREIGN KEY (Owner_id) REFERENCES Users(user_id),
+    PRIMARY KEY (A_id)
 );
 
 CREATE TABLE Pictures
@@ -27,6 +29,20 @@ CREATE TABLE Pictures
   INDEX upid_idx (user_id),
   CONSTRAINT pictures_pk PRIMARY KEY (picture_id)
 );
+
+CREATE TABLE Friends (
+	user_id int4,
+    frnd_id int4,
+    PRIMARY KEY (user_id, frnd_id),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (frnd_id) REFERENCES Users(user_id)
+);
+
+CREATE TABLE Tags (
+	Word VARCHAR(255),
+    PRIMARY KEY (word)
+);
+
 INSERT INTO Users (email, password) VALUES ('test@bu.edu', 'test');
 INSERT INTO Users (email, password) VALUES ('test1@bu.edu', 'test');
-INSERT INTO Friends (user_id, frnd_id) VALUES (1, 2);
+INSERT INTO Tags (Word) VALUES ('nature');

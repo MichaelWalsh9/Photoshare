@@ -124,24 +124,29 @@ def register():
 @app.route("/register", methods=['POST'])
 def register_user():
 	try:
-		email=request.form.get('email')
-		password=request.form.get('password')
+		email = request.form.get('email')
+		password = request.form.get('password')
+		fname = request.form.get('fname')
+		lname = request.form.get('lname')
 	except:
 		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
 		return flask.redirect(flask.url_for('register'))
 	cursor = conn.cursor()
 	test =  isEmailUnique(email)
 	if test:
-		print(cursor.execute("INSERT INTO Users (email, password) VALUES ('{0}', '{1}')".format(email, sha256(password))))
+		print(cursor.execute("INSERT INTO Users (email, password, fname, lname) VALUES ('{0}', '{1}', '{2}', '{3}')".format(email, sha256(password), fname, lname)))
 		conn.commit()
 		#log user in
 		user = User()
 		user.id = email
 		flask_login.login_user(user)
-		return render_template('hello.html', name=email, message='Account Created!')
+		return render_template('hello.html', name=getFullNameFromID(flask_login.current_user.id), message='Account Created!')
 	else:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('register'))
+	
+def getCurrentUid():
+	return getUserIdFromEmail(flask_login.current_user.id)
 
 def getUsersPhotos(uid):
 	cursor = conn.cursor()
@@ -168,10 +173,28 @@ def getUserEmails(uid_list):
 		user_emails.append(user_email)
 	return user_emails
 
+def getFriendsEmails(uid):
+	fids = getUsersFriends(uid)
+	friend_emails = getUserEmails(fids)
+	return friend_emails
+
 def getUserIdFromEmail(email):
 	cursor = conn.cursor()
 	cursor.execute("SELECT user_id  FROM Users WHERE email = '{0}'".format(email))
 	return cursor.fetchone()[0]
+
+def getFirstNameFromID(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT fname  FROM Users WHERE email = '{0}'".format(uid))
+	return cursor.fetchone()[0]
+
+def getLastNameFromID(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT lname  FROM Users WHERE email = '{0}'".format(uid))
+	return cursor.fetchone()[0]
+
+def getFullNameFromID(uid):
+	return getFirstNameFromID(uid) + ' ' + getLastNameFromID(uid)
 
 def isEmailUnique(email):
 	#use this to check if a email has already been registered
@@ -192,25 +215,28 @@ def isEmailRegistered(email):
 		return False
 #end login code
 
+@app.route('/photos')
+@flask_login.login_required
+def photos():
+	return render_template('photos.html', name=getFullNameFromID(flask_login.current_user.id), photos=getUsersPhotos(getCurrentUid()), base64=base64)
+
 @app.route('/profile')
 @flask_login.login_required
 def protected():
-	return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
+	return render_template('hello.html', name=getFullNameFromID(flask_login.current_user.id), message="Here's your profile")
 
 # Friends page route
 @app.route('/friends')
 @flask_login.login_required
 def friend():
-	uid = getUserIdFromEmail(flask_login.current_user.id)
-	fids = getUsersFriends(uid)
-	friend_emails = getUserEmails(fids)
-	return render_template('friends.html', name=flask_login.current_user.id, friends=friend_emails)
+	friend_emails = getFriendsEmails(getCurrentUid())
+	return render_template('friends.html', name=getFullNameFromID(flask_login.current_user.id), friends=friend_emails)
 
 # Add friend route
 @app.route('/addfriend')
 @flask_login.login_required
 def addfriend():
-	return render_template('addfriend.html', name=flask_login.current_user.id, message="Add a friend!")
+	return render_template('addfriend.html', name=getFullNameFromID(flask_login.current_user.id), message="Add a friend!")
 
 @app.route("/addfriend", methods=['POST'])
 def add_friend():
@@ -223,13 +249,14 @@ def add_friend():
 	test =  isEmailRegistered(friend_email)	
 	if test:
 		fid = getUserIdFromEmail(friend_email)
-		uid = getUserIdFromEmail(flask_login.current_user.id)
+		uid = getCurrentUid()
 		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
 		conn.commit()
-		return render_template('hello.html', name=flask_login.current_user.id, message='Friend Added!')
+		friend_emails = getFriendsEmails(getCurrentUid())
+		return render_template('friends.html', name=getFullNameFromID(flask_login.current_user.id), message='Friend Added!', friends=friend_emails)
 	else:
 		print("couldn't find all tokens")
-		return render_template('addfriend.html', name=flask_login.current_user.id, message="User not found, please try again.")
+		return render_template('addfriend.html', name=getFullNameFromID(flask_login.current_user.id), message="User not found, please try again.")
 
 # begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML
@@ -241,14 +268,14 @@ def allowed_file(filename):
 @flask_login.login_required
 def upload_file():
 	if request.method == 'POST':
-		uid = getUserIdFromEmail(flask_login.current_user.id)
+		uid = getCurrentUid()
 		imgfile = request.files['photo']
 		caption = request.form.get('caption')
 		photo_data =imgfile.read()
 		cursor = conn.cursor()
 		cursor.execute('''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
 		conn.commit()
-		return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
+		return render_template('hello.html', name=getFullNameFromID(flask_login.current_user.id), message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
 		return render_template('upload.html')
