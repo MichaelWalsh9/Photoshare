@@ -10,6 +10,14 @@ CREATE TABLE Users (
   CONSTRAINT users_pk PRIMARY KEY (user_id)
 );
 
+CREATE TABLE Friends (
+	user_id int4,
+    frnd_id int4,
+    PRIMARY KEY (user_id, frnd_id),
+    FOREIGN KEY (user_id) REFERENCES Users,
+    FOREIGN KEY (frnd_id) REFERENCES Users
+);
+
 CREATE TABLE Pictures
 (
   picture_id int4  AUTO_INCREMENT,
@@ -21,3 +29,4 @@ CREATE TABLE Pictures
 );
 INSERT INTO Users (email, password) VALUES ('test@bu.edu', 'test');
 INSERT INTO Users (email, password) VALUES ('test1@bu.edu', 'test');
+INSERT INTO Friends (user_id, frnd_id) VALUES (1, 2);

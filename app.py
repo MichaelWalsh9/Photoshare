@@ -13,6 +13,9 @@ import flask
 from flask import Flask, Response, request, render_template, redirect, url_for
 from flaskext.mysql import MySQL
 import flask_login
+import hashlib
+# Short function to simplify hashing of passwords
+def sha256(string): return hashlib.sha256(string.encode()).hexdigest()
 
 #for image uploading
 import os, base64
@@ -23,7 +26,7 @@ app.secret_key = 'super secret string'  # Change this!
 
 #These will need to be changed according to your creditionals
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = 'cs460'
+app.config['MYSQL_DATABASE_PASSWORD'] = 'baTQv9$pEd6y*5'
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
@@ -66,7 +69,7 @@ def request_loader(request):
 	cursor.execute("SELECT password FROM Users WHERE email = '{0}'".format(email))
 	data = cursor.fetchall()
 	pwd = str(data[0][0] )
-	user.is_authenticated = request.form['password'] == pwd
+	user.is_authenticated = sha256(request.form['password']) == pwd
 	return user
 
 '''
@@ -94,7 +97,7 @@ def login():
 	if cursor.execute("SELECT password FROM Users WHERE email = '{0}'".format(email)):
 		data = cursor.fetchall()
 		pwd = str(data[0][0] )
-		if flask.request.form['password'] == pwd:
+		if sha256(flask.request.form['password']) == pwd:
 			user = User()
 			user.id = email
 			flask_login.login_user(user) #okay login in user
@@ -129,7 +132,7 @@ def register_user():
 	cursor = conn.cursor()
 	test =  isEmailUnique(email)
 	if test:
-		print(cursor.execute("INSERT INTO Users (email, password) VALUES ('{0}', '{1}')".format(email, password)))
+		print(cursor.execute("INSERT INTO Users (email, password) VALUES ('{0}', '{1}')".format(email, sha256(password))))
 		conn.commit()
 		#log user in
 		user = User()
@@ -145,6 +148,26 @@ def getUsersPhotos(uid):
 	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
 	return cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
 
+def getUsersFriends(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT frnd_id FROM friends WHERE user_id = '{0}'".format(uid))
+	frnd_id_tuples = cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
+	frnd_id_list = []
+	for frnd_id_tuple in frnd_id_tuples:
+		frnd_id = frnd_id_tuple[0]
+		frnd_id_list.append(frnd_id)
+	return frnd_id_list
+
+def getUserEmails(uid_list):
+	user_emails = []
+	for uid in uid_list:
+		cursor = conn.cursor()
+		cursor.execute("SELECT email FROM Users WHERE user_id = '{0}'".format(uid))
+		user_email_tuple = cursor.fetchall()
+		user_email = user_email_tuple[0][0]
+		user_emails.append(user_email)
+	return user_emails
+
 def getUserIdFromEmail(email):
 	cursor = conn.cursor()
 	cursor.execute("SELECT user_id  FROM Users WHERE email = '{0}'".format(email))
@@ -158,6 +181,15 @@ def isEmailUnique(email):
 		return False
 	else:
 		return True
+	
+def isEmailRegistered(email):
+	#use this to check if a email has already been registered
+	cursor = conn.cursor()
+	if cursor.execute("SELECT email  FROM Users WHERE email = '{0}'".format(email)):
+		#this means there are greater than zero entries with that email
+		return True
+	else:
+		return False
 #end login code
 
 @app.route('/profile')
@@ -165,7 +197,41 @@ def isEmailUnique(email):
 def protected():
 	return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
 
-#begin photo uploading code
+# Friends page route
+@app.route('/friends')
+@flask_login.login_required
+def friend():
+	uid = getUserIdFromEmail(flask_login.current_user.id)
+	fids = getUsersFriends(uid)
+	friend_emails = getUserEmails(fids)
+	return render_template('friends.html', name=flask_login.current_user.id, friends=friend_emails)
+
+# Add friend route
+@app.route('/addfriend')
+@flask_login.login_required
+def addfriend():
+	return render_template('addfriend.html', name=flask_login.current_user.id, message="Add a friend!")
+
+@app.route("/addfriend", methods=['POST'])
+def add_friend():
+	try:
+		friend_email=request.form.get('friend_email')
+	except:
+		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('hello'))
+	cursor = conn.cursor() 
+	test =  isEmailRegistered(friend_email)	
+	if test:
+		fid = getUserIdFromEmail(friend_email)
+		uid = getUserIdFromEmail(flask_login.current_user.id)
+		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
+		conn.commit()
+		return render_template('hello.html', name=flask_login.current_user.id, message='Friend Added!')
+	else:
+		print("couldn't find all tokens")
+		return render_template('addfriend.html', name=flask_login.current_user.id, message="User not found, please try again.")
+
+# begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 def allowed_file(filename):
