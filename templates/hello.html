@@ -7,17 +7,15 @@
 <title>Photoshare</title>
 {% if name %}
   <h1>Hello {{ name }}!</h1>
-{% endif %}
-
-{% if message is none %}
-  <p>You should <a href='/login'>login!</a></p>
 {% else %}
-  <p> Go to <a href='/profile'>profile?</a></p>
+  <h1>You shoud <a href='/login'>log in!</a></h1>
 {% endif %}
 
 <ul>
-<li><a href='/albums'>Albums</a> </li>
-<li><a href='/friends'>Friends</a></li>
-<li><a href='/logout'>Logout</a></li>
-<li><a href='/'>Home</a></li>
+  <li><a href='/allalbums'>Browse All Albums</a></li>
+{% if name %}
+  <li><a href='/albums'>My Albums</a> </li>
+  <li><a href='/friends'>My Friends</a></li>
+  <li><a href='/logout'>Logout</a></li>
+{% endif %}
 </ul>

@@ -342,6 +342,12 @@ def photos():
 
 ###########################################################################################################################################
 
+@app.route('/allalbums')
+def allalbums():
+	return render_template('allalbums.html')
+
+###########################################################################################################################################
+
 @app.route('/profile')
 @flask_login.login_required
 def protected():
@@ -421,7 +427,10 @@ def upload_file():
 #default page
 @app.route("/", methods=['GET'])
 def hello():
-	return render_template('hello.html', message='Welecome to Photoshare')
+	try:
+		return render_template('hello.html', message='Welecome to Photoshare', name=getCurrentName())
+	except:
+		return render_template('hello.html', message='Welecome to Photoshare')
 
 
 if __name__ == "__main__":
