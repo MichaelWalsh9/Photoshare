@@ -83,29 +83,24 @@ def request_loader(request):
 def getCurrentUid():
 	return getUserIdFromEmail(flask_login.current_user.id)
 
-def getUsersPhotos(uid):
-	cursor = conn.cursor()
-	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
-	return cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
-
 # General purpose function that returns all attributes of a specified type in a table relation to a key
-def getAttributesByKey(table, key, attribute, id):
+def getAttributesByKey(attribute, table, key, id):
 	cursor = conn.cursor()
 	cursor.execute("SELECT {0} FROM {1} WHERE {2} = '{3}'".format(attribute, table, key, id))
 	tuple_list = cursor.fetchall()
 	attribute_list = []
 	for tuple in tuple_list:
-		attribute = tuple[0]
-		attribute_list.append(attribute)
+		query = tuple[0]
+		attribute_list.append(query)
 	return attribute_list
 
 # General purpose function that returns all lists of attributes of a specified type in a table in relation to a series of keys, returns 2d list
-def getAttributeByKeylist(attribute, table, id, key_list):
-	attribute_list_list = []
-	for key in key_list:
-		attribute_list = getAttributesByKey(table, key, attribute, key)
-		attribute_list_list.append(attribute_list)
-	return attribute_list_list
+def getAttributeByKeylist(attribute, table, key, id_list):
+	attribute_list = []
+	for id in id_list:
+		query = getAttributesByKey(attribute, table, key, id)
+		attribute_list.append(query[0])
+	return attribute_list
 
 # Function for taking a 2d list and putting all elements in a single list
 def D2D(list2):
@@ -115,11 +110,35 @@ def D2D(list2):
 			return_list.append(element)
 	return return_list
 
+def getUsersPhotos(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
+	return cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
+
+def getPhotosByIDs(pids):
+	photo_list = []
+	for pid in pids:
+		cursor = conn.cursor()
+		cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE picture_id = '{0}'".format(pid))
+		photo_list.append(cursor.fetchall)
+	photo_list = D2D(photo_list)
+	return photo_list
+
+def getAlbumPhotos(aid):
+	pids = getAttributesByKey('P_id', 'AlbumPhotos', 'A_id', aid)
+	return getPhotosByIDs(pids)	
+
+def getUserAlbums(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT A_id, Name FROM Albums WHERE owner_id = '{0}'".format(uid))
+	tuples = cursor.fetchall()
+	return tuples
+
 def getUsersFriends(uid):
-	return getAttributesByKey('Friends', 'user_id', 'frnd_id', uid)
+	return getAttributesByKey('frnd_id', 'Friends', 'user_id', uid)
 
 def getUserEmails(uid_list):
-	return D2D(getAttributeByKeylist('email', 'Users', 'user_id', uid_list))
+	return getAttributeByKeylist('email', 'Users', 'user_id', uid_list)
 
 def getFriendsEmails(uid):
 	fids = getUsersFriends(uid)
@@ -131,18 +150,18 @@ def getUserIdFromEmail(email):
 	cursor.execute("SELECT user_id  FROM Users WHERE email = '{0}'".format(email))
 	return cursor.fetchone()[0]
 
-def getFirstNameFromID(uid):
+def getFirstNameFromEmail(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT fname  FROM Users WHERE email = '{0}'".format(uid))
 	return cursor.fetchone()[0]
 
-def getLastNameFromID(uid):
+def getLastNameFromEmail(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT lname  FROM Users WHERE email = '{0}'".format(uid))
 	return cursor.fetchone()[0]
 
-def getFullNameFromID(uid):
-	return getFirstNameFromID(uid) + ' ' + getLastNameFromID(uid)
+def getFullNameFromEmail(uid):
+	return getFirstNameFromEmail(uid) + ' ' + getLastNameFromEmail(uid)
 
 def getAlbumsFromID(uid):
 	cursor = conn.cursor()
@@ -168,6 +187,13 @@ def isEmailRegistered(email):
 	cursor = conn.cursor()
 	if cursor.execute("SELECT email  FROM Users WHERE email = '{0}'".format(email)):
 		#this means there are greater than zero entries with that email
+		return True
+	else:
+		return False
+	
+def doesAlbumExist(album_name, uid):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT * FROM Albums WHERE Name = '{0}' AND Owner_id = '{1}'".format(album_name, uid)):
 		return True
 	else:
 		return False
@@ -238,7 +264,7 @@ def register_user():
 		user = User()
 		user.id = email
 		flask_login.login_user(user)
-		return render_template('hello.html', name=getFullNameFromID(flask_login.current_user.id), message='Account Created!')
+		return render_template('hello.html', name=getFullNameFromEmail(flask_login.current_user.id), message='Account Created!')
 	else:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('register'))
@@ -248,14 +274,42 @@ def register_user():
 @app.route('/albums')
 @flask_login.login_required
 def myalbums():
-	return render_template('albums.html', name=getFullNameFromID(flask_login.current_user.id))
+	uid = getCurrentUid()
+	return render_template('albums.html', name=getFullNameFromEmail(flask_login.current_user.id),
+			albums=getUserAlbums(uid))
+
+# Add album route
+@app.route('/addalbum')
+@flask_login.login_required
+def addalbum():
+	return render_template('addalbum.html', name=getFullNameFromEmail(flask_login.current_user.id), message="Create a new album!")
+
+@app.route("/addalbum", methods=['POST'])
+def add_album():
+	try:
+		new_album_name = request.form.get('album_name')
+	except:
+		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('hello'))
+	cursor = conn.cursor()
+	uid = getCurrentUid()
+	test = doesAlbumExist(new_album_name, uid)
+	if test == False:
+		print(cursor.execute("INSERT INTO Albums (Name, Owner_id) VALUES ('{0}', '{1}')".format(new_album_name, uid)))
+		conn.commit()
+		return render_template('albums.html', name=getFullNameFromEmail(flask_login.current_user.id), 
+				message='Album Created!', albums=getUserAlbums(uid))
+	else:
+		print("couldn't find all tokens")
+		return render_template('addalbum.html', name=getFullNameFromEmail(flask_login.current_user.id), 
+				message="Please input a unique album name!")
 
 ###########################################################################################################################################
 
 @app.route('/photos')
 @flask_login.login_required
 def photos():
-	return render_template('photos.html', name=getFullNameFromID(flask_login.current_user.id), 
+	return render_template('photos.html', name=getFullNameFromEmail(flask_login.current_user.id), 
 			photos=getUsersPhotos(getCurrentUid()), base64=base64)
 
 ###########################################################################################################################################
@@ -263,7 +317,7 @@ def photos():
 @app.route('/profile')
 @flask_login.login_required
 def protected():
-	return render_template('hello.html', name=getFullNameFromID(flask_login.current_user.id), message="Here's your profile")
+	return render_template('hello.html', name=getFullNameFromEmail(flask_login.current_user.id), message="Here's your profile")
 
 ###########################################################################################################################################
 
@@ -272,13 +326,13 @@ def protected():
 @flask_login.login_required
 def friend():
 	friend_emails = getFriendsEmails(getCurrentUid())
-	return render_template('friends.html', name=getFullNameFromID(flask_login.current_user.id), friends=friend_emails)
+	return render_template('friends.html', name=getFullNameFromEmail(flask_login.current_user.id), friends=friend_emails)
 
 # Add friend route
 @app.route('/addfriend')
 @flask_login.login_required
 def addfriend():
-	return render_template('addfriend.html', name=getFullNameFromID(flask_login.current_user.id), message="Add a friend!")
+	return render_template('addfriend.html', name=getFullNameFromEmail(flask_login.current_user.id), message="Add a friend!")
 
 @app.route("/addfriend", methods=['POST'])
 def add_friend():
@@ -295,10 +349,10 @@ def add_friend():
 		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
 		conn.commit()
 		friend_emails = getFriendsEmails(getCurrentUid())
-		return render_template('friends.html', name=getFullNameFromID(flask_login.current_user.id), message='Friend Added!', friends=friend_emails)
+		return render_template('friends.html', name=getFullNameFromEmail(flask_login.current_user.id), message='Friend Added!', friends=friend_emails)
 	else:
 		print("couldn't find all tokens")
-		return render_template('addfriend.html', name=getFullNameFromID(flask_login.current_user.id), message="User not found, please try again.")
+		return render_template('addfriend.html', name=getFullNameFromEmail(flask_login.current_user.id), message="User not found, please try again.")
 
 ###########################################################################################################################################
 
@@ -319,7 +373,7 @@ def upload_file():
 		cursor = conn.cursor()
 		cursor.execute('''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
 		conn.commit()
-		return render_template('hello.html', name=getFullNameFromID(flask_login.current_user.id), message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
+		return render_template('hello.html', name=getFullNameFromEmail(flask_login.current_user.id), message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
 		return render_template('upload.html')
