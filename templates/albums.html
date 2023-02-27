@@ -12,14 +12,6 @@
 <li><a href='/addalbum'>Add an album</a></li>
 <li><a href='/'>Home</a></li>
   <body>
-      <div>
-        Input an album you would like to view or edit:
-        <form method="post" action="{{ url_for('my_albums') }}">
-            <label for="album_edit">Enter the album's name:</label>
-            <input type="text" name="album_edit" /><br />
-            <input type="submit" />
-        </form>
-      </div>
       <div class="title">
           <h1>Here is a list of your Albums!</h1>
       </div>
@@ -27,7 +19,13 @@
           {% if albums %}
               <ul>
               {% for album in albums %}
-                    <li>{{album[1]}}<br>
+                    <li>
+                      {{album[1]}}
+                      <form method="post" action="{{ url_for('my_albums') }}">
+                        <input type="hidden" name="album_edit" value={{album[1]}}>
+                        <input type="submit" value="Edit Album"/>
+                      </form>
+                    </li>
               {% endfor %}
               </ul>
           {% endif %}

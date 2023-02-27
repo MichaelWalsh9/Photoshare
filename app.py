@@ -137,6 +137,12 @@ def getUserAlbums(uid):
 	tuples = cursor.fetchall()
 	return tuples
 
+def getAllAlbums():
+	cursor = conn.cursor()
+	cursor.execute("SELECT A_id, Name FROM Albums")
+	tuples = cursor.fetchall()
+	return tuples
+
 def getUsersFriends(uid):
 	return getAttributesByKey('frnd_id', 'Friends', 'user_id', uid)
 
@@ -166,7 +172,7 @@ def getLastNameFromEmail(uid):
 def getFullNameFromEmail(uid):
 	return getFirstNameFromEmail(uid) + ' ' + getLastNameFromEmail(uid)
 
-def getAlbumsFromID(uid):
+def getAlbumsFromUID(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT A_id FROM Albums WHERE Owner_id = '{0}'".format(uid))
 	tuple_list = cursor.fetchall
@@ -180,6 +186,9 @@ def getAlbumIDFromName(aname, uid):
 	cursor=conn.cursor()
 	cursor.execute("SELECT A_id FROM Albums WHERE Name = '{0}' AND Owner_id = '{1}'".format(aname, uid))
 	return cursor.fetchone()[0]
+
+def getAlbumNameFromID(aid):
+	return getAttributesByKey('Name', 'Albums', 'A_id', aid)
 
 def isEmailUnique(email):
 	#use this to check if a email has already been registered
@@ -199,7 +208,7 @@ def isEmailRegistered(email):
 	else:
 		return False
 	
-def doesAlbumExist(album_name, uid):
+def doesMyAlbumExist(album_name, uid):
 	cursor = conn.cursor()
 	if cursor.execute("SELECT * FROM Albums WHERE Name = '{0}' AND Owner_id = '{1}'".format(album_name, uid)):
 		return True
@@ -292,14 +301,15 @@ def my_albums():
 	uid = getCurrentUid()
 	try:
 		target_album_name = request.form.get('album_edit')
+		print(target_album_name)
 	except:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
-	test = doesAlbumExist(target_album_name, uid)
+	test = doesMyAlbumExist(target_album_name, uid)
 	if test:
 		target_album_id = getAlbumIDFromName(target_album_name, uid)
 		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(target_album_id), 
-			 base64=base64, album_name = target_album_name)
+			 base64=base64, album_name = target_album_name, can_edit=True)
 	else:
 		print("couldn't find all tokens")
 		return render_template('albums.html', name=getCurrentName(), 
@@ -321,7 +331,7 @@ def add_album():
 		return flask.redirect(flask.url_for('hello'))
 	cursor = conn.cursor()
 	uid = getCurrentUid()
-	test = doesAlbumExist(new_album_name, uid)
+	test = doesMyAlbumExist(new_album_name, uid)
 	if test == False:
 		print(cursor.execute("INSERT INTO Albums (Name, Owner_id) VALUES ('{0}', '{1}')".format(new_album_name, uid)))
 		conn.commit()
@@ -344,7 +354,18 @@ def photos():
 
 @app.route('/allalbums')
 def allalbums():
-	return render_template('allalbums.html')
+	return render_template('allalbums.html', albums=getAllAlbums())
+
+@app.route('/allalbums', methods=['POST'])
+def all_albums():
+	try:
+		target_album = request.form.get('album_view')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	target_name = getAlbumNameFromID(target_album)
+	return render_template('photos.html', photos=getAlbumPhotos(target_album), 
+			base64=base64, album_name = target_name)
 
 ###########################################################################################################################################
 
@@ -404,7 +425,7 @@ def upload_file():
 		imgfile = request.files['photo']
 		caption = request.form.get('caption')
 		target_album_name = request.form.get('asalbum')
-		if doesAlbumExist(target_album_name, uid) == False:
+		if doesMyAlbumExist(target_album_name, uid) == False:
 			return render_template('upload.html', message="Please input a valid album name.")
 		aid = getAlbumIDFromName(target_album_name, uid)
 		photo_data =imgfile.read()

@@ -10,13 +10,17 @@
 {% endif %}
 
 <ul>
+  {% if can_edit %}
     <li><a href='/upload'>Upload a new photo</a> </li>
-    <li><a href='albums'>Back to my albums</a></li>
-    <li><a href='/'>Home</a></li>
+    <li><a href='/albums'>Back to my albums</a></li>
+  {% else %}
+    <li><a href='/allalbums'>Back to albums</a></li>
+  {% endif %}
+  <li><a href='/'>Home</a></li>
 </ul>
 
 {% if photos %}
-<h2>Here are your photos in {{album_name}}</h2>
+<h2>Here are the photos in {{album_name}}</h2>
     <ul>
     {% for photo in photos %}
         <li>{{photo[2]}}<br>
