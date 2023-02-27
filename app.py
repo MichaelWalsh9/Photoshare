@@ -105,6 +105,11 @@ def getAttributeByKeylist(attribute, table, key, id_list):
 		attribute_list.append(query[0])
 	return attribute_list
 
+def delAttributeByKey(table, key, id):
+	cursor = conn.cursor()
+	cursor.execute("DELETE FROM {0} WHERE {1} = '{2}'".format(table, key, id))
+	conn.commit()
+
 # Function for taking a 2d list and putting all elements in a single list
 def D2D(list2):
 	return_list = []
@@ -142,6 +147,17 @@ def getAllAlbums():
 	cursor.execute("SELECT A_id, Name FROM Albums")
 	tuples = cursor.fetchall()
 	return tuples
+
+def purgeAlbum(aid):
+	# First find all photos associated with this album
+	pids = getAttributesByKey('P_id', 'AlbumPhotos', 'A_id', aid)
+	print(pids)
+	# Then, delete all of these photos
+	for pid in pids:
+		delAttributeByKey('AlbumPhotos', 'P_id', pid)
+		delAttributeByKey('Pictures', 'picture_id', pid)
+	# Finally, detele the album itself
+	delAttributeByKey('Albums', 'A_id', aid)
 
 def getUsersFriends(uid):
 	return getAttributesByKey('frnd_id', 'Friends', 'user_id', uid)
@@ -315,7 +331,6 @@ def my_albums():
 		return render_template('albums.html', name=getCurrentName(), 
 				message="Please input a valid album name!", albums=getUserAlbums(uid))
 
-
 # Add album route
 @app.route('/addalbum')
 @flask_login.login_required
@@ -341,6 +356,32 @@ def add_album():
 		print("couldn't find all tokens")
 		return render_template('addalbum.html', name=getCurrentName(), 
 				message="Please input a unique album name!", albums=getUserAlbums(uid))
+	
+# Remove album route
+@app.route('/remalbum')
+@flask_login.login_required
+def remalbum():
+	return render_template('remalbum.html', name=getCurrentName())
+
+@app.route("/remalbum", methods=['POST'])
+def rem_album():
+	try:
+		targeted_album_name = request.form.get('remove_album_name')
+	except:
+		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('hello'))
+	uid = getCurrentUid()
+	print(targeted_album_name)
+	test = doesMyAlbumExist(targeted_album_name, uid)
+	if test:
+		aid = getAlbumIDFromName(targeted_album_name, uid)
+		purgeAlbum(aid)
+		return render_template('albums.html', name=getCurrentName(), 
+				message='Album Deleted!', albums=getUserAlbums(uid))
+	else:
+		print("couldn't find all tokens")
+		return render_template('remalbum.html', name=getCurrentName(), 
+				message="Please input a valid album name!", albums=getUserAlbums(uid))
 
 ###########################################################################################################################################
 
