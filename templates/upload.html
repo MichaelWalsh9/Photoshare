@@ -1,5 +1,8 @@
 <!-- author ben lawson (balawson@bu.edu) -->
 <!-- HTML page for uploading photos to PhotoShare -->
+{% if message %}
+  <h4>{{message}}!</h4>
+{% endif %}
 <head>
     <title>Upload a photo!</title>
 </head>
@@ -12,6 +15,8 @@
                 <input type="file" name="photo" required='true' /><br />
                 <label for="caption">Please caption:</label>
                 <input type="text" name="caption" required='true' /><br />
+                <label for="asalbum">In my album:</label>
+                <input type="text" name="asalbum" required='true' /><br />
                 <input type="submit" value="Upload" />
             </form>
     </body>

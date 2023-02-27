@@ -83,6 +83,9 @@ def request_loader(request):
 def getCurrentUid():
 	return getUserIdFromEmail(flask_login.current_user.id)
 
+def getCurrentName():
+	return getFullNameFromEmail(flask_login.current_user.id)
+
 # General purpose function that returns all attributes of a specified type in a table relation to a key
 def getAttributesByKey(attribute, table, key, id):
 	cursor = conn.cursor()
@@ -120,7 +123,7 @@ def getPhotosByIDs(pids):
 	for pid in pids:
 		cursor = conn.cursor()
 		cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE picture_id = '{0}'".format(pid))
-		photo_list.append(cursor.fetchall)
+		photo_list.append(cursor.fetchall())
 	photo_list = D2D(photo_list)
 	return photo_list
 
@@ -172,6 +175,11 @@ def getAlbumsFromID(uid):
 		attribute = tuple[0]
 		attribute_list.append(attribute)
 	return attribute_list
+
+def getAlbumIDFromName(aname, uid):
+	cursor=conn.cursor()
+	cursor.execute("SELECT A_id FROM Albums WHERE Name = '{0}' AND Owner_id = '{1}'".format(aname, uid))
+	return cursor.fetchone()[0]
 
 def isEmailUnique(email):
 	#use this to check if a email has already been registered
@@ -264,7 +272,7 @@ def register_user():
 		user = User()
 		user.id = email
 		flask_login.login_user(user)
-		return render_template('hello.html', name=getFullNameFromEmail(flask_login.current_user.id), message='Account Created!')
+		return render_template('hello.html', name=getCurrentName(), message='Account Created!')
 	else:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('register'))
@@ -275,14 +283,34 @@ def register_user():
 @flask_login.login_required
 def myalbums():
 	uid = getCurrentUid()
-	return render_template('albums.html', name=getFullNameFromEmail(flask_login.current_user.id),
+	return render_template('albums.html', name=getCurrentName(),
 			albums=getUserAlbums(uid))
+
+@app.route('/albums', methods=['POST'])
+@flask_login.login_required
+def my_albums():
+	uid = getCurrentUid()
+	try:
+		target_album_name = request.form.get('album_edit')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	test = doesAlbumExist(target_album_name, uid)
+	if test:
+		target_album_id = getAlbumIDFromName(target_album_name, uid)
+		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(target_album_id), 
+			 base64=base64, album_name = target_album_name)
+	else:
+		print("couldn't find all tokens")
+		return render_template('albums.html', name=getCurrentName(), 
+				message="Please input a valid album name!", albums=getUserAlbums(uid))
+
 
 # Add album route
 @app.route('/addalbum')
 @flask_login.login_required
 def addalbum():
-	return render_template('addalbum.html', name=getFullNameFromEmail(flask_login.current_user.id), message="Create a new album!")
+	return render_template('addalbum.html', name=getCurrentName(), message="Create a new album!")
 
 @app.route("/addalbum", methods=['POST'])
 def add_album():
@@ -297,19 +325,19 @@ def add_album():
 	if test == False:
 		print(cursor.execute("INSERT INTO Albums (Name, Owner_id) VALUES ('{0}', '{1}')".format(new_album_name, uid)))
 		conn.commit()
-		return render_template('albums.html', name=getFullNameFromEmail(flask_login.current_user.id), 
+		return render_template('albums.html', name=getCurrentName(), 
 				message='Album Created!', albums=getUserAlbums(uid))
 	else:
 		print("couldn't find all tokens")
-		return render_template('addalbum.html', name=getFullNameFromEmail(flask_login.current_user.id), 
-				message="Please input a unique album name!")
+		return render_template('addalbum.html', name=getCurrentName(), 
+				message="Please input a unique album name!", albums=getUserAlbums(uid))
 
 ###########################################################################################################################################
 
 @app.route('/photos')
 @flask_login.login_required
 def photos():
-	return render_template('photos.html', name=getFullNameFromEmail(flask_login.current_user.id), 
+	return render_template('photos.html', name=getCurrentName(), 
 			photos=getUsersPhotos(getCurrentUid()), base64=base64)
 
 ###########################################################################################################################################
@@ -317,7 +345,7 @@ def photos():
 @app.route('/profile')
 @flask_login.login_required
 def protected():
-	return render_template('hello.html', name=getFullNameFromEmail(flask_login.current_user.id), message="Here's your profile")
+	return render_template('hello.html', name=getCurrentName(), message="Here's your profile")
 
 ###########################################################################################################################################
 
@@ -326,13 +354,13 @@ def protected():
 @flask_login.login_required
 def friend():
 	friend_emails = getFriendsEmails(getCurrentUid())
-	return render_template('friends.html', name=getFullNameFromEmail(flask_login.current_user.id), friends=friend_emails)
+	return render_template('friends.html', name=getCurrentName(), friends=friend_emails)
 
 # Add friend route
 @app.route('/addfriend')
 @flask_login.login_required
 def addfriend():
-	return render_template('addfriend.html', name=getFullNameFromEmail(flask_login.current_user.id), message="Add a friend!")
+	return render_template('addfriend.html', name=getCurrentName(), message="Add a friend!")
 
 @app.route("/addfriend", methods=['POST'])
 def add_friend():
@@ -349,10 +377,10 @@ def add_friend():
 		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
 		conn.commit()
 		friend_emails = getFriendsEmails(getCurrentUid())
-		return render_template('friends.html', name=getFullNameFromEmail(flask_login.current_user.id), message='Friend Added!', friends=friend_emails)
+		return render_template('friends.html', name=getCurrentName(), message='Friend Added!', friends=friend_emails)
 	else:
 		print("couldn't find all tokens")
-		return render_template('addfriend.html', name=getFullNameFromEmail(flask_login.current_user.id), message="User not found, please try again.")
+		return render_template('addfriend.html', name=getCurrentName(), message="User not found, please try again.")
 
 ###########################################################################################################################################
 
@@ -369,11 +397,20 @@ def upload_file():
 		uid = getCurrentUid()
 		imgfile = request.files['photo']
 		caption = request.form.get('caption')
+		target_album_name = request.form.get('asalbum')
+		if doesAlbumExist(target_album_name, uid) == False:
+			return render_template('upload.html', message="Please input a valid album name.")
+		aid = getAlbumIDFromName(target_album_name, uid)
 		photo_data =imgfile.read()
 		cursor = conn.cursor()
 		cursor.execute('''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
 		conn.commit()
-		return render_template('hello.html', name=getFullNameFromEmail(flask_login.current_user.id), message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
+		pid = cursor.lastrowid
+		print(pid)
+		cursor.execute('''INSERT INTO AlbumPhotos (A_id, P_id) VALUES (%s, %s)''', (aid, pid))
+		conn.commit()
+		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(aid), 
+			 base64=base64, album_name = target_album_name)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
 		return render_template('upload.html')
