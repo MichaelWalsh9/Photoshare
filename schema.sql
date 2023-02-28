@@ -1,4 +1,4 @@
-DROP DATABASE photoshare;
+DROP DATABASE IF EXISTS photoshare;
 CREATE DATABASE IF NOT EXISTS photoshare;
 USE photoshare;
 DROP TABLE IF EXISTS Pictures CASCADE;
@@ -8,6 +8,8 @@ CREATE TABLE Users (
     user_id int4  AUTO_INCREMENT,
     email varchar(255) UNIQUE,
     password varchar(255),
+    fname varchar(255),
+    lname varchar(255),
   CONSTRAINT users_pk PRIMARY KEY (user_id)
 );
 
@@ -16,7 +18,7 @@ CREATE TABLE Albums (
     Name VARCHAR(255),
     Owner_id int4,
     CrDate TIMESTAMP,
-    FOREIGN KEY (Owner_id) REFERENCES Users(user_id),
+    FOREIGN KEY (Owner_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     PRIMARY KEY (A_id)
 );
 
@@ -30,12 +32,15 @@ CREATE TABLE Pictures
   CONSTRAINT pictures_pk PRIMARY KEY (picture_id)
 );
 
-CREATE TABLE Friends (
-	user_id int4,
-    frnd_id int4,
-    PRIMARY KEY (user_id, frnd_id),
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (frnd_id) REFERENCES Users(user_id)
+CREATE TABLE Comments (
+	c_id int4 AUTO_INCREMENT,
+    p_id int4,
+    owner_id int4,
+    text VARCHAR(1020),
+    CrDate TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (p_id) REFERENCES Pictures(picture_id) ON DELETE CASCADE,
+    PRIMARY KEY (c_id)    
 );
 
 CREATE TABLE Tags (
@@ -43,6 +48,24 @@ CREATE TABLE Tags (
     PRIMARY KEY (word)
 );
 
-INSERT INTO Users (email, password) VALUES ('test@bu.edu', 'test');
-INSERT INTO Users (email, password) VALUES ('test1@bu.edu', 'test');
+CREATE TABLE Friends (
+	user_id int4,
+    frnd_id int4,
+    PRIMARY KEY (user_id, frnd_id),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (frnd_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE AlbumPhotos (
+	A_id int4,
+    P_id int4,
+    PRIMARY KEY (P_id, A_id),
+    FOREIGN KEY (P_id) REFERENCES Pictures(picture_id) ON DELETE CASCADE,
+    FOREIGN KEY (A_id) REFERENCES Albums(A_id) ON DELETE CASCADE
+);
+
+
+
+INSERT INTO Users (email, password, fname, lname) VALUES ('test@bu.edu', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'John', 'Doe');
+INSERT INTO Users (email, password, fname, lname) VALUES ('test1@bu.edu', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'Jane', 'Doe');
 INSERT INTO Tags (Word) VALUES ('nature');

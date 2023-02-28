@@ -24,7 +24,7 @@
             <ul>
             {% for album in albums %}
                 <li>
-                    {{album[1]}}
+                    {{album[1]}} by {{album[3]}}
                     <form method="post" action="{{ url_for('all_albums') }}">
                     <input type="hidden" name="album_view" value={{album[0]}}>
                     <input type="submit" value="View Album"/>

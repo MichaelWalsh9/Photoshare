@@ -1,0 +1,39 @@
+<!-- author Michael Walsh (mpw9@bu.edu) -->
+<!-- HTML page for viewing comments in PhotoShare -->
+<!doctype html>
+{% if message %}
+  <h4>{{message}}!</h4>
+{% endif %}
+<title>View Comments</title>
+{% if name %}
+  <h1>Hello {{ name }}!</h1>
+{% endif %}
+
+<ul>
+    <li><a href='/allalbums'>Back to albums</a></li>
+    <li><a href='/'>Home</a></li>
+</ul>
+
+<div id="leave_comment">
+    <form method="post" action="{{ url_for('leave_comments') }}">
+        <label for="leave_comment">Enter your comment:</label>
+        <input type="text" name="leave_comment" /><br />
+        <input type="hidden" name="comment_photo" value={{photo[1]}} /><br />
+        <input type="submit" />
+    </form>
+</div>
+
+{% if comments %}
+    <h2>Comments for this photo:</h2>
+    <li>{{photo[2]}}<br>
+        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
+    <ul>
+    {% for comment in comments %}
+        <li>{{comment[1]}}<br> left by {{comment[2]}}
+    {% endfor %}
+    </ul>
+{% else %}
+    <h2>No comments here yet</h2>
+    <li>{{photo[2]}}<br>
+        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
+{% endif %}

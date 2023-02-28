@@ -86,6 +86,8 @@ def getCurrentUid():
 def getCurrentName():
 	return getFullNameFromEmail(flask_login.current_user.id)
 
+###########################################################################################################################################
+
 # General purpose function that returns all attributes of a specified type in a table relation to a key
 def getAttributesByKey(attribute, table, key, id):
 	cursor = conn.cursor()
@@ -118,6 +120,8 @@ def D2D(list2):
 			return_list.append(element)
 	return return_list
 
+###########################################################################################################################################
+
 def getUsersPhotos(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
@@ -136,6 +140,8 @@ def getAlbumPhotos(aid):
 	pids = getAttributesByKey('P_id', 'AlbumPhotos', 'A_id', aid)
 	return getPhotosByIDs(pids)	
 
+###########################################################################################################################################
+
 def getUserAlbums(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT A_id, Name FROM Albums WHERE owner_id = '{0}'".format(uid))
@@ -144,20 +150,51 @@ def getUserAlbums(uid):
 
 def getAllAlbums():
 	cursor = conn.cursor()
-	cursor.execute("SELECT A_id, Name FROM Albums")
+	cursor.execute("SELECT A_id, Name, owner_id FROM Albums")
 	tuples = cursor.fetchall()
 	return tuples
+
+def getAlbumIDFromName(aname, uid):
+	cursor=conn.cursor()
+	cursor.execute("SELECT A_id FROM Albums WHERE Name = '{0}' AND Owner_id = '{1}'".format(aname, uid))
+	return cursor.fetchone()[0]
+
+def getAlbumNameFromID(aid):
+	return getAttributesByKey('Name', 'Albums', 'A_id', aid)
 
 def purgeAlbum(aid):
 	# First find all photos associated with this album
 	pids = getAttributesByKey('P_id', 'AlbumPhotos', 'A_id', aid)
-	print(pids)
 	# Then, delete all of these photos
 	for pid in pids:
 		delAttributeByKey('AlbumPhotos', 'P_id', pid)
 		delAttributeByKey('Pictures', 'picture_id', pid)
 	# Finally, detele the album itself
 	delAttributeByKey('Albums', 'A_id', aid)
+
+###########################################################################################################################################
+
+def getCommentsbyPhoto(pid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT c_id, text, owner_id FROM Comments WHERE p_id = '{0}'".format(pid))
+	return cursor.fetchall()
+
+def getCommentListwithNames(commentslist):
+	commentemaillist = []
+	for comment in commentslist:
+		if comment[2] == None:
+			commentemaillist.append(['Guest'])
+		else:
+			commentemaillist.append(getEmailFromUserID(comment[2]))
+	commentemaillist = D2D(commentemaillist)
+
+	commentslistfinal = []	
+	for i in range(len(commentemaillist)):
+		newtuple = (commentslist[i][0], commentslist[i][1], commentemaillist[i])
+		commentslistfinal.append(newtuple)
+	return commentslistfinal
+
+###########################################################################################################################################
 
 def getUsersFriends(uid):
 	return getAttributesByKey('frnd_id', 'Friends', 'user_id', uid)
@@ -175,6 +212,9 @@ def getUserIdFromEmail(email):
 	cursor.execute("SELECT user_id  FROM Users WHERE email = '{0}'".format(email))
 	return cursor.fetchone()[0]
 
+def getEmailFromUserID(uid):
+	return getAttributesByKey('email', 'Users', 'user_id', uid)
+
 def getFirstNameFromEmail(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT fname  FROM Users WHERE email = '{0}'".format(uid))
@@ -188,23 +228,7 @@ def getLastNameFromEmail(uid):
 def getFullNameFromEmail(uid):
 	return getFirstNameFromEmail(uid) + ' ' + getLastNameFromEmail(uid)
 
-def getAlbumsFromUID(uid):
-	cursor = conn.cursor()
-	cursor.execute("SELECT A_id FROM Albums WHERE Owner_id = '{0}'".format(uid))
-	tuple_list = cursor.fetchall
-	attribute_list = []
-	for tuple in tuple_list:
-		attribute = tuple[0]
-		attribute_list.append(attribute)
-	return attribute_list
-
-def getAlbumIDFromName(aname, uid):
-	cursor=conn.cursor()
-	cursor.execute("SELECT A_id FROM Albums WHERE Name = '{0}' AND Owner_id = '{1}'".format(aname, uid))
-	return cursor.fetchone()[0]
-
-def getAlbumNameFromID(aid):
-	return getAttributesByKey('Name', 'Albums', 'A_id', aid)
+###########################################################################################################################################
 
 def isEmailUnique(email):
 	#use this to check if a email has already been registered
@@ -317,7 +341,6 @@ def my_albums():
 	uid = getCurrentUid()
 	try:
 		target_album_name = request.form.get('album_edit')
-		print(target_album_name)
 	except:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
@@ -371,7 +394,6 @@ def rem_album():
 		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
 		return flask.redirect(flask.url_for('hello'))
 	uid = getCurrentUid()
-	print(targeted_album_name)
 	test = doesMyAlbumExist(targeted_album_name, uid)
 	if test:
 		aid = getAlbumIDFromName(targeted_album_name, uid)
@@ -385,17 +407,69 @@ def rem_album():
 
 ###########################################################################################################################################
 
+# Deprecated
 @app.route('/photos')
 @flask_login.login_required
 def photos():
 	return render_template('photos.html', name=getCurrentName(), 
 			photos=getUsersPhotos(getCurrentUid()), base64=base64)
 
+@app.route('/photos', methods=['POST'])
+def view_comments():
+	try:
+		target_photo = request.form.get('view_comments')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	commentslist = getCommentListwithNames(getCommentsbyPhoto(target_photo)) 
+	photodata = getPhotosByIDs([target_photo])[0]
+	return render_template('comments.html', comments=commentslist, photo=photodata, base64=base64)
+
+
+###########################################################################################################################################
+
+# Deprecated
+@app.route('/comments')
+def comments():
+	return render_template('comments.html', name=getCurrentName())
+
+@app.route('/comments', methods=['POST'])
+def leave_comments():
+	try:
+		usercomment = request.form.get('leave_comment')
+		commentphoto = request.form.get('comment_photo')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	cursor = conn.cursor()
+
+	try:
+		# For logged in Users
+		uid = getCurrentUid()
+		print(cursor.execute("INSERT INTO Comments (text, p_id, owner_id) VALUES ('{0}', '{1}', '{2}')".format(usercomment, commentphoto, uid)))
+	except:
+		# For guests
+		print(cursor.execute("INSERT INTO Comments (text, p_id) VALUES ('{0}', '{1}')".format(usercomment, commentphoto)))
+	conn.commit()
+
+	commentslist = getCommentListwithNames(getCommentsbyPhoto(commentphoto)) 	
+	
+	photodata = getPhotosByIDs([commentphoto])[0]
+
+	return render_template('comments.html', comments=commentslist, photo=photodata, base64=base64)
+
+
 ###########################################################################################################################################
 
 @app.route('/allalbums')
 def allalbums():
-	return render_template('allalbums.html', albums=getAllAlbums())
+	AlbumList = getAllAlbums()
+	AlbumNameList = []
+	for album in AlbumList:
+		email = getEmailFromUserID(album[2])
+		email = email[0]
+		AlbumNameList.append(album + (getFullNameFromEmail(email),))
+	return render_template('allalbums.html', albums=AlbumNameList)
 
 @app.route('/allalbums', methods=['POST'])
 def all_albums():
@@ -474,11 +548,10 @@ def upload_file():
 		cursor.execute('''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
 		conn.commit()
 		pid = cursor.lastrowid
-		print(pid)
 		cursor.execute('''INSERT INTO AlbumPhotos (A_id, P_id) VALUES (%s, %s)''', (aid, pid))
 		conn.commit()
 		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(aid), 
-			 base64=base64, album_name = target_album_name)
+			 base64=base64, album_name = target_album_name, can_edit=True)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
 		return render_template('upload.html')
