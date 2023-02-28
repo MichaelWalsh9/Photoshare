@@ -14,26 +14,48 @@
     <li><a href='/'>Home</a></li>
 </ul>
 
+<div>
+    <button id="showbutton" onClick="hidePhoto()">Show Photo</button>
+</div>
+
+
+<div id="photo" style="display:none">
+    <li>{{photo[2]}}<br>
+        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
+    <ul>
+</div>
+
+<script>
+    function hidePhoto() {
+        photo = document.getElementById("photo")
+        button = document.getElementById("showbutton")
+        if (photo.style.display == "none") {
+            photo.style.display = "inline"
+            button.innerHTML = "Hide Photo"
+        } else {
+            photo.style.display = "none"
+            button.innerHTML = "Show Photo"
+        }
+    }
+</script>
+<br>
 <div id="leave_comment">
     <form method="post" action="{{ url_for('leave_comments') }}">
         <label for="leave_comment">Enter your comment:</label>
-        <input type="text" name="leave_comment" /><br />
+        <input type="text" name="leave_comment" />
         <input type="hidden" name="comment_photo" value={{photo[1]}} /><br />
         <input type="submit" />
     </form>
 </div>
 
 {% if comments %}
-    <h2>Comments for this photo:</h2>
-    <li>{{photo[2]}}<br>
-        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
-    <ul>
+    <h2>Comments on this photo:</h2>
     {% for comment in comments %}
         <li>{{comment[1]}}<br> left by {{comment[2]}}
     {% endfor %}
     </ul>
 {% else %}
     <h2>No comments here yet</h2>
-    <li>{{photo[2]}}<br>
+    <li>Caption: {{photo[2]}}<br>
         <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
 {% endif %}

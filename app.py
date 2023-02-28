@@ -138,7 +138,14 @@ def getPhotosByIDs(pids):
 
 def getAlbumPhotos(aid):
 	pids = getAttributesByKey('P_id', 'AlbumPhotos', 'A_id', aid)
-	return getPhotosByIDs(pids)	
+	phototuples = getPhotosByIDs(pids)
+	photoswithlikes = []
+	for tuple in phototuples:
+		cursor = conn.cursor()
+		cursor.execute("SELECT COUNT(u_id) FROM LikesPhoto WHERE p_id = '{0}'".format(tuple[1]))
+		newtuple = tuple + (str(cursor.fetchone()[0]),)
+		photoswithlikes.append(newtuple)
+	return photoswithlikes
 
 ###########################################################################################################################################
 
@@ -450,6 +457,7 @@ def leave_comments():
 	except:
 		# For guests
 		print(cursor.execute("INSERT INTO Comments (text, p_id) VALUES ('{0}', '{1}')".format(usercomment, commentphoto)))
+		
 	conn.commit()
 
 	commentslist = getCommentListwithNames(getCommentsbyPhoto(commentphoto)) 	
@@ -479,6 +487,7 @@ def all_albums():
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
 	target_name = getAlbumNameFromID(target_album)
+	test = getAlbumPhotos(target_album)
 	return render_template('photos.html', photos=getAlbumPhotos(target_album), 
 			base64=base64, album_name = target_name)
 

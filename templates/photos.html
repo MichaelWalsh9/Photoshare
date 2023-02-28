@@ -20,15 +20,19 @@
 </ul>
 
 {% if photos %}
-<h2>Here are the photos in {{album_name}}</h2>
+<h2>Here are the photos in {{album_name[0]}}</h2>
     <ul>
     {% for photo in photos %}
-        <li>{{photo[2]}}<br>
-        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
-        <form method="post" action="{{ url_for('photos') }}">
-          <input type="hidden" name="view_comments" value={{photo[1]}}>
-          <input type="submit" value="View Comments"/>
-          </form>
+      <li>Caption: {{photo[2]}}<br>
+      {{photo[3]}} Likes
+      <form method="post" action="{{ url_for('photos') }}">
+        <input type="hidden" name="view_comments" value={{photo[1]}}>
+        <input type="submit" value="View Likes and Comments"/>
+      </form>
+      <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
+      <br>
+      <br>
+      <br>
     {% endfor %}
     </ul>
 {% endif %}
