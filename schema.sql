@@ -10,6 +10,9 @@ CREATE TABLE Users (
     password varchar(255),
     fname varchar(255),
     lname varchar(255),
+    dob varchar(255),
+    hometown varchar(510),
+    gender varchar(255),
   CONSTRAINT users_pk PRIMARY KEY (user_id)
 );
 

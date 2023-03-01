@@ -1,0 +1,11 @@
+<!-- author Michael Walsh (mpw9@bu.edu) -->
+<!-- HTML of top tags list for PhotoShare -->
+<!doctype html>
+<li><a href='/'>Home</a></li>
+<title>Hottest Tags</title>
+<h1>Here are the top tags on PhotoShare:</h1>
+{% if taglist %}
+    {% for tag in taglist %}
+        <li>{{tag[1]}} is associated with {{tag[0]}} photos</li>
+    {% endfor %}
+{% endif %}

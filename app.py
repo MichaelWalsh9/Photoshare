@@ -165,6 +165,12 @@ def getUserPhotosbyTag(tag, uid):
 	print("userphotos in getUserPhotosbyTag: ", userphotos)
 	return userphotos
 
+def getTagScore(tag):
+	cursor = conn.cursor()
+	cursor.execute("SELECT COUNT(tag) FROM TaggedWith WHERE tag = '{0}'".format(tag))
+	tagscore = cursor.fetchone()[0]
+	return tagscore
+
 ###########################################################################################################################################
 
 def getUsersPhotos(uid):
@@ -463,13 +469,16 @@ def register_user():
 		password = request.form.get('password')
 		fname = request.form.get('fname')
 		lname = request.form.get('lname')
+		dob = request.form.get('dob')
+		hometown = request.form.get('hometown')
+		gender = request.form.get('gender')
 	except:
 		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
 		return flask.redirect(flask.url_for('register'))
 	cursor = conn.cursor()
 	test =  isEmailUnique(email)
 	if test:
-		print(cursor.execute("INSERT INTO Users (email, password, fname, lname) VALUES ('{0}', '{1}', '{2}', '{3}')".format(email, sha256(password), fname, lname)))
+		print(cursor.execute("INSERT INTO Users (email, password, fname, lname, dob, hometown, gender) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')".format(email, sha256(password), fname, lname, dob, hometown, gender)))
 		conn.commit()
 		#log user in
 		user = User()
@@ -696,6 +705,19 @@ def all_albums():
 
 ###########################################################################################################################################
 
+@app.route("/toptags")
+def toptags():
+	alltags = getAllTags()
+	scoredtags = []
+	for tag in alltags:
+		score = getTagScore(tag)
+		scoredtags.append((score, tag))
+	sortedscores = quickSortTuples(scoredtags)
+	topscores = sortedscores[:3]
+	return render_template('toptags.html', taglist=topscores)
+
+
+
 @app.route('/alltagsearch')
 def alltagsearch():
 	alltags = getAllTags()
@@ -745,7 +767,13 @@ def protected():
 @flask_login.login_required
 def friend():
 	friend_emails = getFriendsEmails(getCurrentUid())
-	return render_template('userlist.html', name=getCurrentName(), users=friend_emails, friends="True")
+	friend_names = []
+	for email in friend_emails:
+		friend_names.append(getFullNameFromEmail(email))
+	friendlist = []
+	for i in range(len(friend_emails)):
+		friendlist.append((friend_names[i], friend_emails[i]))
+	return render_template('userlist.html', name=getCurrentName(), friends=friendlist)
 
 # Add friend route
 @app.route('/addfriend')
@@ -769,7 +797,13 @@ def add_friend():
 		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
 		conn.commit()
 		friend_emails = getFriendsEmails(getCurrentUid())
-		return render_template('userlist.html', name=getCurrentName(), message='Friend Added!', users=friend_emails, friends="True")
+		friend_names = []
+		for email in friend_emails:
+			friend_names.append(getFullNameFromEmail(email))
+		friendlist = []
+		for i in range(len(friend_emails)):
+			friendlist.append((friend_names[i], friend_emails[i]))
+		return render_template('userlist.html', name=getCurrentName(), friends=friendlist)
 	else:
 		print("couldn't find all tokens")
 		return render_template('addfriend.html', name=getCurrentName(), message="User not found, please try again.")
