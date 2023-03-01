@@ -23,13 +23,18 @@
 <h2>Here are the photos in {{album_name[0]}}</h2>
     <ul>
     {% for photo in photos %}
+    <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
       <li>Caption: {{photo[2]}}<br>
       {{photo[3]}} Likes
       <form method="post" action="{{ url_for('photos') }}">
-        <input type="hidden" name="view_comments" value={{photo[1]}}>
+        <input type="hidden" name="photoid" value={{photo[1]}}>
+        <input type="hidden" name="iscomments" value="True">
         <input type="submit" value="View Likes and Comments"/>
       </form>
-      <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
+      <form method="post" action="{{ url_for('photos') }}">
+        <input type="hidden" name="photoid" value={{photo[1]}}>
+        <input type="submit" value="Like/Unlike"/>
+      </form>
       <br>
       <br>
       <br>

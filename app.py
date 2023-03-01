@@ -124,7 +124,7 @@ def D2D(list2):
 
 def getUsersPhotos(uid):
 	cursor = conn.cursor()
-	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
+	cursor.execute("SELECT picture_id FROM Pictures WHERE user_id = '{0}'".format(uid))
 	return cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
 
 def getPhotosByIDs(pids):
@@ -201,6 +201,15 @@ def getCommentListwithNames(commentslist):
 		commentslistfinal.append(newtuple)
 	return commentslistfinal
 
+def getLikesOnPhoto(pid):
+	uids = getAttributesByKey('u_id', 'LikesPhoto', 'p_id', pid)
+	names = []
+	for uid in uids:
+		name = getFullNameFromEmail(getEmailFromUserID(uid)[0])
+		names.append(name)
+	names = names
+	return names
+
 ###########################################################################################################################################
 
 def getUsersFriends(uid):
@@ -235,6 +244,26 @@ def getLastNameFromEmail(uid):
 def getFullNameFromEmail(uid):
 	return getFirstNameFromEmail(uid) + ' ' + getLastNameFromEmail(uid)
 
+def getAllUIDs():
+	cursor = conn.cursor()
+	cursor.execute("SELECT user_id FROM Users")
+	uids = cursor.fetchall()
+	return uids
+
+def getUserScore(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT COUNT(picture_id) FROM Pictures WHERE user_id = '{0}'".format(uid))
+	pscore = cursor.fetchone()[0]
+	cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}'".format(uid))
+	cscore = cursor.fetchone()[0]
+	pids = getUsersPhotos(uid)
+	pids = D2D(pids)
+	dock = 0
+	for pid in pids:
+		dock = dock + cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}' AND p_id = '{1}'".format(uid, pid))
+	return pscore + (cscore - dock)
+
+
 ###########################################################################################################################################
 
 def isEmailUnique(email):
@@ -261,6 +290,31 @@ def doesMyAlbumExist(album_name, uid):
 		return True
 	else:
 		return False
+	
+def hasUserLikedPhoto(pid, uid):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT * FROM LikesPhoto WHERE p_id = '{0}' AND u_id = '{1}'".format(pid, uid)):
+		return True
+	else:
+		return False 
+	
+###########################################################################################################################################
+
+# Function for sorting tuples or lists by value of their first element
+def quickSortTuples(list):
+	if len(list) < 2:
+		return list
+	low, same, high = [], [], []
+	pivot = list[1][0]
+	for element in list:
+		if element[0] > pivot:
+			low.append(element)
+		elif element[0] == pivot:
+			same.append(element)
+		elif element[0] < pivot:
+			high.append(element)
+	return quickSortTuples(low) + same + quickSortTuples(high)
+
 
 ############################################################################################################################################
 # 	NAVIGATION AND FUNCTIONAL CODE	 #######################################################################################################
@@ -424,13 +478,66 @@ def photos():
 @app.route('/photos', methods=['POST'])
 def view_comments():
 	try:
-		target_photo = request.form.get('view_comments')
+		target_photo = request.form.get('photoid')
 	except:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
-	commentslist = getCommentListwithNames(getCommentsbyPhoto(target_photo)) 
-	photodata = getPhotosByIDs([target_photo])[0]
-	return render_template('comments.html', comments=commentslist, photo=photodata, base64=base64)
+	try:
+		iscomments = request.form.get('iscomments')
+	except:
+		iscomments = "False"
+	if (iscomments == "True"):
+		commentslist = getCommentListwithNames(getCommentsbyPhoto(target_photo))
+		photodata = getPhotosByIDs([target_photo])[0]
+		return render_template('comments.html', comments=commentslist, likes=getLikesOnPhoto(target_photo), photo=photodata, base64=base64)
+	else:
+		AlbumList = getAllAlbums()
+		AlbumNameList = []
+		for album in AlbumList:
+			email = getEmailFromUserID(album[2])
+			email = email[0]
+			AlbumNameList.append(album + (getFullNameFromEmail(email),))
+		uid = getCurrentUid()
+		if (hasUserLikedPhoto(target_photo, uid) == False):
+			# User likes photo
+			cursor = conn.cursor()
+			print(cursor.execute("INSERT INTO LikesPhoto (p_id, u_id) VALUES ('{0}', '{1}')".format(target_photo, uid)))
+			conn.commit()
+			return render_template('allalbums.html', albums=AlbumNameList)
+		else:
+			# User unlikes photo
+			cursor = conn.cursor()
+			print(cursor.execute("DELETE FROM LikesPhoto WHERE p_id = '{0}' AND u_id = '{1}'".format(target_photo, uid)))
+			conn.commit()
+			return render_template('allalbums.html', albums=AlbumNameList)
+
+@app.route('/photos', methods=['POST'])
+@flask_login.login_required
+def like_photo():
+	try:
+		target_photo = request.form.get('like_photo')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	AlbumList = getAllAlbums()
+	AlbumNameList = []
+	for album in AlbumList:
+		email = getEmailFromUserID(album[2])
+		email = email[0]
+		AlbumNameList.append(album + (getFullNameFromEmail(email),))
+	uid = getCurrentUid()
+	if hasUserLikedPhoto():
+		# User likes photo
+		cursor = conn.cursor()
+		print(cursor.execute("INSERT INTO LikesPhoto (p_id, u_id) VALUES ('{0}', '{1}')".format(target_photo, uid)))
+		conn.commit()
+		return render_template('allalbums.html', albums=AlbumNameList)
+	else:
+		# User unlikes photo
+		cursor = conn.cursor()
+		print(cursor.execute("DETEL FROM LikesPhoto WHERE u_id = '{0}' AND p_id = '{1}'".format(target_photo, uid)))
+		conn.commit()
+		return render_template('allalbums.html', albums=AlbumNameList)
 
 
 ###########################################################################################################################################
@@ -464,7 +571,7 @@ def leave_comments():
 	
 	photodata = getPhotosByIDs([commentphoto])[0]
 
-	return render_template('comments.html', comments=commentslist, photo=photodata, base64=base64)
+	return render_template('comments.html', comments=commentslist, likes=getLikesOnPhoto(commentphoto), photo=photodata, base64=base64)
 
 
 ###########################################################################################################################################
@@ -505,7 +612,7 @@ def protected():
 @flask_login.login_required
 def friend():
 	friend_emails = getFriendsEmails(getCurrentUid())
-	return render_template('friends.html', name=getCurrentName(), friends=friend_emails)
+	return render_template('userlist.html', name=getCurrentName(), users=friend_emails, friends="True")
 
 # Add friend route
 @app.route('/addfriend')
@@ -514,6 +621,7 @@ def addfriend():
 	return render_template('addfriend.html', name=getCurrentName(), message="Add a friend!")
 
 @app.route("/addfriend", methods=['POST'])
+@flask_login.login_required
 def add_friend():
 	try:
 		friend_email=request.form.get('friend_email')
@@ -528,10 +636,36 @@ def add_friend():
 		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
 		conn.commit()
 		friend_emails = getFriendsEmails(getCurrentUid())
-		return render_template('friends.html', name=getCurrentName(), message='Friend Added!', friends=friend_emails)
+		return render_template('userlist.html', name=getCurrentName(), message='Friend Added!', users=friend_emails, friends="True")
 	else:
 		print("couldn't find all tokens")
 		return render_template('addfriend.html', name=getCurrentName(), message="User not found, please try again.")
+	
+###########################################################################################################################################
+
+@app.route("/topusers")
+def topusers():
+	alluids = getAllUIDs()
+	alluids = alluids[:9]
+	alluids = D2D(alluids)
+	alluscores = []
+	for uid in alluids:
+		alluscores.append(getUserScore(uid))
+	alluemails = []
+	for uid in alluids:
+		alluemails.append(getEmailFromUserID(uid))
+	alluemails = D2D(alluemails)
+	allunames = []
+	for email in alluemails:
+		allunames.append(getFullNameFromEmail(email))
+	top_users = []
+	for i in range(len(alluids)):
+		usertuple = (alluscores[i], alluemails[i], allunames[i])
+		top_users.append(usertuple)
+	print(top_users)
+	top_users = quickSortTuples(top_users)
+	print(top_users)
+	return render_template('userlist.html', users=top_users)
 
 ###########################################################################################################################################
 

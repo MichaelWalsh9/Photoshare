@@ -1,0 +1,45 @@
+<!-- author Michael Walsh mpw9@bu.edu -->
+<!-- HTML page for viewing friends list in photoshare -->
+
+
+{% if message %}
+  <h4>{{message}}!</h4>
+{% endif %}
+
+{% if friends %}
+    <head>
+        <title>Friends list</title>
+    </head>
+    {% if name %}
+        <h1>Hello {{ name }}!</h1>
+    {% endif %}
+    <li><a href='/addfriend'>Add a friend</a></li>
+    <li><a href='/'>Home</a></li>
+    <div class="title">
+        <h1>Here is a list of your friends!</h1>
+    </div>
+{% else %}
+    <head>
+        <title>Users list</title>
+    </head>
+    {% if name %}
+        <h1>Hello {{ name }}!</h1>
+    {% endif %}
+    <li><a href='/'>Home</a></li>
+    <div class="title">
+        <h1>Here is a list of top users!</h1>
+    </div>
+{% endif %}
+
+{% if users %}
+<body> 
+    <div id="content">
+        <ul>
+        {% for user in users %}
+            <li>{{user[2]}} ({{user[1]}}) has a score of {{user[0]}}<br>
+        {% endfor %}
+        </ul>        
+    </div>
+</body>
+{% endif %}
+

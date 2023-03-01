@@ -48,6 +48,16 @@
     </form>
 </div>
 
+{% if likes %}
+    <h2>Users who have liked this photo:</h2>
+    {% for like in likes %}
+        <li>{{like}}
+    {% endfor %}
+    </ul>
+{% else %}
+    <h2>Nobody has liked this photo</h2>
+{% endif %}
+
 {% if comments %}
     <h2>Comments on this photo:</h2>
     {% for comment in comments %}
@@ -56,6 +66,4 @@
     </ul>
 {% else %}
     <h2>No comments here yet</h2>
-    <li>Caption: {{photo[2]}}<br>
-        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
 {% endif %}
