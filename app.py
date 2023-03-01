@@ -120,6 +120,51 @@ def D2D(list2):
 			return_list.append(element)
 	return return_list
 
+# Takes a list and returns a sorted list of tuples consisting of each unique element of the list and the number of its appearances
+def Reduce(list):
+	tuplelist = []
+	for unique in list:
+		tally = 0
+		for element in list:
+			if element == unique:
+				tally += 1
+		tuplelist.append((tally, unique))
+	tuplelist = [*set(tuplelist)]
+	tuplelist = quickSortTuples(tuplelist)
+	return tuplelist
+
+###########################################################################################################################################
+
+# Returns a list of all tags
+def getAllTags():
+	cursor = conn.cursor()
+	cursor.execute("SELECT Word FROM Tags")
+	tagtuples = cursor.fetchall()
+	taglist = []
+	for tuple in tagtuples:
+		tag = tuple[0]
+		taglist.append(tag)
+	return taglist
+
+# Returns a list of all photo ids with a given tag
+def getAllPhotosbyTag(tag):
+	return getAttributesByKey('p_id', 'TaggedWith', 'tag', tag)
+
+# Returns a list of all photo ids with a given tag owned by a user with a given uid
+def getUserPhotosbyTag(tag, uid):
+	print(tag, uid)
+	allphotos = getAllPhotosbyTag(tag)
+	print("allphotos in getUserPhotosbyTag: ", allphotos)
+	userphotos = []
+	for pid in allphotos:
+		cursor = conn.cursor()
+		cursor.execute("SELECT picture_id FROM Pictures WHERE picture_id = '{0}' AND user_id = '{1}'".format(pid, uid))
+		result = cursor.fetchone()
+		if result != None:
+			userphotos.append(cursor.fetchone()[0])
+	print("userphotos in getUserPhotosbyTag: ", userphotos)
+	return userphotos
+
 ###########################################################################################################################################
 
 def getUsersPhotos(uid):
@@ -148,6 +193,7 @@ def getAlbumPhotos(aid):
 	return photoswithlikes
 
 ###########################################################################################################################################
+
 
 def getUserAlbums(uid):
 	cursor = conn.cursor()
@@ -200,6 +246,11 @@ def getCommentListwithNames(commentslist):
 		newtuple = (commentslist[i][0], commentslist[i][1], commentemaillist[i])
 		commentslistfinal.append(newtuple)
 	return commentslistfinal
+
+# Return a list of uids associated with each comment that shares the specified text
+def getCommentUsersbyText(text):
+	return getAttributesByKey('owner_id', 'Comments', 'text', text)
+
 
 def getLikesOnPhoto(pid):
 	uids = getAttributesByKey('u_id', 'LikesPhoto', 'p_id', pid)
@@ -263,6 +314,41 @@ def getUserScore(uid):
 		dock = dock + cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}' AND p_id = '{1}'".format(uid, pid))
 	return pscore + (cscore - dock)
 
+def getTopUserListInfo(uids):
+	alluscores = []
+	for uid in uids:
+		alluscores.append(getUserScore(uid))
+	alluemails = []
+	for uid in uids:
+		alluemails.append(getEmailFromUserID(uid))
+	alluemails = D2D(alluemails)
+	allunames = []
+	for email in alluemails:
+		allunames.append(getFullNameFromEmail(email))
+	userlist = []
+	for i in range(len(uids)):
+		usertuple = (alluscores[i], uids[i], alluemails[i], allunames[i])
+		userlist.append(usertuple)
+	return userlist
+
+def getCommentUserListInfo(inputtuples):
+	uscores = []
+	uids = []
+	for tuple in inputtuples:
+		uscores.append(tuple[0])
+		uids.append(tuple[1])
+	uemails = []
+	for uid in uids:
+		uemails.append(getEmailFromUserID(uid))
+	uemails = D2D(uemails)
+	unames = []
+	for email in uemails:
+		unames.append(getFullNameFromEmail(email))
+	userlist = []
+	for i in range(len(inputtuples)):
+		usertuple = (uscores[i], uids[i], uemails[i], unames[i])
+		userlist.append(usertuple)
+	return userlist
 
 ###########################################################################################################################################
 
@@ -297,6 +383,13 @@ def hasUserLikedPhoto(pid, uid):
 		return True
 	else:
 		return False 
+
+def tagExists(tag):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT * FROM Tags WHERE Word = '{0}'".format(tag)):
+		return True
+	else:
+		return False
 	
 ###########################################################################################################################################
 
@@ -409,7 +502,7 @@ def my_albums():
 	if test:
 		target_album_id = getAlbumIDFromName(target_album_name, uid)
 		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(target_album_id), 
-			 base64=base64, album_name = target_album_name, can_edit=True)
+			 base64=base64, album_name = [target_album_name], can_edit=True)
 	else:
 		print("couldn't find all tokens")
 		return render_template('albums.html', name=getCurrentName(), 
@@ -497,7 +590,10 @@ def view_comments():
 			email = getEmailFromUserID(album[2])
 			email = email[0]
 			AlbumNameList.append(album + (getFullNameFromEmail(email),))
-		uid = getCurrentUid()
+		try: 
+			uid = getCurrentUid()
+		except:
+			return render_template('register.html', supress='True', message="You must create an account to like photos")			
 		if (hasUserLikedPhoto(target_photo, uid) == False):
 			# User likes photo
 			cursor = conn.cursor()
@@ -600,6 +696,43 @@ def all_albums():
 
 ###########################################################################################################################################
 
+@app.route('/alltagsearch')
+def alltagsearch():
+	alltags = getAllTags()
+	return render_template('alltagsearch.html', taglist=alltags)
+
+@app.route('/alltagsearch', methods=['POST'])
+def alltag_search():
+	try:
+		tag = request.form.get('tag')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	pids = getAllPhotosbyTag(tag)
+	photolist = getPhotosByIDs(pids)	
+	return render_template('photos.html', photos=photolist, album_name = [tag], base64=base64)
+
+@app.route('/privatetagsearch')
+@flask_login.login_required
+def privatetagsearch():
+	alltags = getAllTags()
+	return render_template('privatetagsearch.html', taglist=alltags)
+
+@app.route('/privatetagsearch', methods=['POST'])
+def privatetag_search():
+	try:
+		tag = request.form.get('ptag')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	print(tag)
+	pids = getUserPhotosbyTag(tag, getCurrentUid())
+	photolist = getPhotosByIDs(pids)	
+	return render_template('photos.html', photos=photolist, album_name = [tag], base64=base64)
+
+
+###########################################################################################################################################
+
 @app.route('/profile')
 @flask_login.login_required
 def protected():
@@ -648,24 +781,25 @@ def topusers():
 	alluids = getAllUIDs()
 	alluids = alluids[:9]
 	alluids = D2D(alluids)
-	alluscores = []
-	for uid in alluids:
-		alluscores.append(getUserScore(uid))
-	alluemails = []
-	for uid in alluids:
-		alluemails.append(getEmailFromUserID(uid))
-	alluemails = D2D(alluemails)
-	allunames = []
-	for email in alluemails:
-		allunames.append(getFullNameFromEmail(email))
-	top_users = []
-	for i in range(len(alluids)):
-		usertuple = (alluscores[i], alluemails[i], allunames[i])
-		top_users.append(usertuple)
-	print(top_users)
+	top_users = getTopUserListInfo(alluids)
 	top_users = quickSortTuples(top_users)
-	print(top_users)
-	return render_template('userlist.html', users=top_users)
+	return render_template('userlist.html', users=top_users, listwording=" has a contribution score of ")
+
+@app.route("/searchcomments")
+def searchcomments():
+	return render_template('searchcomments.html')
+
+@app.route("/searchcomments", methods=['POST'])
+def search_comments():
+	try:
+		searchterm = request.form.get('search_comments')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	cuids = getCommentUsersbyText(searchterm)
+	reduced = Reduce(cuids)
+	userlist = getCommentUserListInfo(reduced)
+	return render_template('userlist.html', users=userlist, listwording=", number of times commented: ", term=searchterm)
 
 ###########################################################################################################################################
 
@@ -693,8 +827,28 @@ def upload_file():
 		pid = cursor.lastrowid
 		cursor.execute('''INSERT INTO AlbumPhotos (A_id, P_id) VALUES (%s, %s)''', (aid, pid))
 		conn.commit()
+		try:
+			tags = request.form.get('tags')
+		except:
+			return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(aid), 
+			 base64=base64, album_name = [target_album_name], can_edit=True)
+		tags = tags.lower()
+		taglist = tags.split()
+		print(taglist, "!!")
+		print(tagExists(taglist[0]), "....")
+		for tag in taglist:
+			print(tagExists(tag), "??")
+			if tagExists(tag):
+				print('''INSERT INTO TaggedWith (tag, p_id) VALUES (%s, %s)''', (tag, pid))
+				cursor.execute('''INSERT INTO TaggedWith (tag, p_id) VALUES (%s, %s)''', (tag, pid))
+				conn.commit()
+			else:
+				cursor.execute('''INSERT INTO Tags (Word) VALUES (%s)''', (tag))
+				conn.commit()
+				cursor.execute('''INSERT INTO TaggedWith (tag, p_id) VALUES (%s, %s)''', (tag, pid))
+				conn.commit()
 		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(aid), 
-			 base64=base64, album_name = target_album_name, can_edit=True)
+			 base64=base64, album_name = [target_album_name], can_edit=True)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
 		return render_template('upload.html')

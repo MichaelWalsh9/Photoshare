@@ -9,6 +9,9 @@
 <head>
     <title>Create an account!</title>
 </head>
+{% if message %}
+    <h1>{{message}}</h1>
+{% endif %}
 {%if not supress%}
 <h1> Email already in use! Use another one or <a href="/login">login</a></h1>
 {% endif %}

@@ -1,0 +1,20 @@
+<!-- author Michael Walsh (mpw9@bu.edu) -->
+<!-- HTML of private tag search for PhotoShare -->
+<!doctype html>
+<title>Search Tag</title>
+<li><a href='/'>Home</a></li>
+<div>
+    <h1>Search Tags (My Photos Only)</h1>
+</div>
+<div>
+    <form method="post" action="{{ url_for('privatetag_search') }}">
+        <label for="ptag">Search my photos with the tag: </label>
+        <input type="text" name="ptag">
+        <input type="submit">
+    </form>
+</div>
+{% if taglist %}
+    {% for tag in taglist %}
+        <li>{{tag}}</li>
+    {% endfor %}
+{% endif %}

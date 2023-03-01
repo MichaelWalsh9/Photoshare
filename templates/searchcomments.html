@@ -1,0 +1,16 @@
+<!-- author Michael Walsh (mpw9@bu.edu) -->
+<!-- HTML of comments search for PhotoShare -->
+<!doctype html>
+<title>Comment Search</title>
+<li><a href='/'>Home</a></li>
+<div>
+    <h1>Search for Users by Comments</h1>
+</div>
+<div>
+    <form method="post" action="{{ url_for('search_comments') }}">
+        <label for="search_comments">Search for users who have commented: </label>
+        <input type="text" name="search_comments">
+        <input type="submit">
+    </form>
+</div>
+

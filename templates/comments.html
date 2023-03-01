@@ -44,9 +44,12 @@
         <label for="leave_comment">Enter your comment:</label>
         <input type="text" name="leave_comment" />
         <input type="hidden" name="comment_photo" value={{photo[1]}} /><br />
+        <input type="hidden" name="newcomment" value="True"/>
         <input type="submit" />
     </form>
 </div>
+
+<br>
 
 {% if likes %}
     <h2>Users who have liked this photo:</h2>
@@ -61,9 +64,9 @@
 {% if comments %}
     <h2>Comments on this photo:</h2>
     {% for comment in comments %}
-        <li>{{comment[1]}}<br> left by {{comment[2]}}
+        <li>{{comment[1]}}<br> left by {{comment[2]}}</li>
+        <br>
     {% endfor %}
-    </ul>
 {% else %}
     <h2>No comments here yet</h2>
 {% endif %}

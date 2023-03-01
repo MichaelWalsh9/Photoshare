@@ -13,14 +13,12 @@
   {% if can_edit %}
     <li><a href='/upload'>Upload a new photo</a> </li>
     <li><a href='/albums'>Back to my albums</a></li>
-  {% else %}
-    <li><a href='/allalbums'>Back to albums</a></li>
   {% endif %}
   <li><a href='/'>Home</a></li>
 </ul>
 
 {% if photos %}
-<h2>Here are the photos in {{album_name[0]}}</h2>
+<h2>Here are the photos for {{album_name[0]}}</h2>
     <ul>
     {% for photo in photos %}
     <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
@@ -40,4 +38,6 @@
       <br>
     {% endfor %}
     </ul>
+{% else %}
+    <h1>No Photos Found</h1>
 {% endif %}
