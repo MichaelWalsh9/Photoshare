@@ -6,19 +6,29 @@
 {% if name %}
   <h1>Hello {{ name }}!</h1>
 {% endif %}
-{% if message %}
-  <h4>{{message}}!</h4>
+<li><a href='/friends'>Back to My Friends</a></li>
+<li><a href='/'>Home</a></li>
+<body>
+    <div class="title">
+        <h1>Enter your new friend's information below</h1>
+    </div>
+    <div id="content">
+        <form method="post" action="{{ url_for('add_friend') }}">
+            <label for="email">Enter your friend's email:</label>
+            <input type="email" name="friend_email" />
+            <input type="submit" />
+        </form>
+    </div>
+</body>
+{% if users %}
+<h3>Here is a list of reccomended friends for you:</h3>
+<body> 
+     <div id="content">
+        <ul>
+        {% for user in users %}
+            <li>{{user[3]}} ({{user[2]}}){{listwording}}{{user[0]}}<br>
+        {% endfor %}
+        </ul>        
+    </div>
+</body>
 {% endif %}
-    <body>
-        <div class="title">
-            <h1>Enter your friend's information below</h1>
-        </div>
-        <div id="content">
-            <form method="post" action="{{ url_for('add_friend') }}">
-                <label for="email">Enter your friend's email:</label>
-                <input type="email" name="friend_email" /><br />
-                <input type="submit" />
-            </form>
-         </div>
-    </body>
-<a href='/'>Home</a>

@@ -198,6 +198,10 @@ def getAlbumPhotos(aid):
 		photoswithlikes.append(newtuple)
 	return photoswithlikes
 
+def purgePhoto(pid):
+	delAttributeByKey('Comments', 'p_id', pid)
+	delAttributeByKey('Pictures', 'picture_id', pid)
+
 ###########################################################################################################################################
 
 
@@ -227,7 +231,7 @@ def purgeAlbum(aid):
 	# Then, delete all of these photos
 	for pid in pids:
 		delAttributeByKey('AlbumPhotos', 'P_id', pid)
-		delAttributeByKey('Pictures', 'picture_id', pid)
+		purgePhoto(pid)
 	# Finally, detele the album itself
 	delAttributeByKey('Albums', 'A_id', aid)
 
@@ -317,7 +321,11 @@ def getUserScore(uid):
 	pids = D2D(pids)
 	dock = 0
 	for pid in pids:
-		dock = dock + cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}' AND p_id = '{1}'".format(uid, pid))
+		cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}' AND p_id = '{1}'".format(uid, pid))
+		dock = dock + (cursor.fetchone()[0])
+	print("pscore: ", pscore)
+	print("cscore: ", cscore)
+	print("dock: ", dock)
 	return pscore + (cscore - dock)
 
 def getTopUserListInfo(uids):
@@ -478,7 +486,8 @@ def register_user():
 	cursor = conn.cursor()
 	test =  isEmailUnique(email)
 	if test:
-		print(cursor.execute("INSERT INTO Users (email, password, fname, lname, dob, hometown, gender) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')".format(email, sha256(password), fname, lname, dob, hometown, gender)))
+		print(cursor.execute("INSERT INTO Users (email, password, fname, lname, dob, hometown, gender) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')".format(email, 
+																				  sha256(password), fname, lname, dob, hometown, gender)))
 		conn.commit()
 		#log user in
 		user = User()
@@ -588,10 +597,23 @@ def view_comments():
 		iscomments = request.form.get('iscomments')
 	except:
 		iscomments = "False"
+	try:
+		delete = request.form.get('delphoto')
+	except:
+		delete = "False"
 	if (iscomments == "True"):
 		commentslist = getCommentListwithNames(getCommentsbyPhoto(target_photo))
 		photodata = getPhotosByIDs([target_photo])[0]
 		return render_template('comments.html', comments=commentslist, likes=getLikesOnPhoto(target_photo), photo=photodata, base64=base64)
+	elif (delete == "True"):
+		AlbumList = getAllAlbums()
+		AlbumNameList = []
+		for album in AlbumList:
+			email = getEmailFromUserID(album[2])
+			email = email[0]
+			AlbumNameList.append(album + (getFullNameFromEmail(email),))
+		purgePhoto(target_photo)
+		return render_template('allalbums.html', albums=AlbumNameList)
 	else:
 		AlbumList = getAllAlbums()
 		AlbumNameList = []
@@ -716,8 +738,6 @@ def toptags():
 	topscores = sortedscores[:3]
 	return render_template('toptags.html', taglist=topscores)
 
-
-
 @app.route('/alltagsearch')
 def alltagsearch():
 	alltags = getAllTags()
@@ -752,6 +772,28 @@ def privatetag_search():
 	photolist = getPhotosByIDs(pids)	
 	return render_template('photos.html', photos=photolist, album_name = [tag], base64=base64)
 
+@app.route('/photosearch')
+def photosearch():
+	tags = getAllTags()
+	return render_template('photosearch.html', taglist=tags)
+
+@app.route('/photosearch', methods=['POST'])
+def photosearch():
+	try:
+		search = request.form.get('search_photo')
+	except:
+		print("couldn't find all tokens")
+		return flask.redirect(flask.url_for('hello'))
+	print("search: ", search)
+	query = search.lower()
+	query = query.split()
+	print("query: ", query)
+	
+	return render_template('photos.html', name=getCurrentName(), photos=photolist, 
+			 base64=base64, album_name = search)
+
+
+
 
 ###########################################################################################################################################
 
@@ -773,13 +815,31 @@ def friend():
 	friendlist = []
 	for i in range(len(friend_emails)):
 		friendlist.append((friend_names[i], friend_emails[i]))
-	return render_template('userlist.html', name=getCurrentName(), friends=friendlist)
+	return render_template('friends.html', name=getCurrentName(), friends=friendlist)
 
 # Add friend route
 @app.route('/addfriend')
 @flask_login.login_required
 def addfriend():
-	return render_template('addfriend.html', name=getCurrentName(), message="Add a friend!")
+	uid = getCurrentUid()
+	print("uid: ", uid)
+	friendslist = getUsersFriends(uid)
+	print("friendslist: ", friendslist)
+	fof = []
+	for friend in friendslist:
+		friendoffriend = getUsersFriends(friend)
+		print(friendoffriend)
+		fof.append(friendoffriend)
+	print("fof: ", fof)
+	reduced = quickSortTuples(Reduce(D2D(fof)))
+	print("reduced: ", reduced)
+	userlist = []
+	for tuple in reduced: 
+		print(tuple)
+		userlist.append((tuple[0], tuple[1], getEmailFromUserID(tuple[1])[0], getFullNameFromEmail(getEmailFromUserID(tuple[1])[0])))
+	print("userlist: ", userlist)
+	return render_template('addfriend.html', name=getCurrentName(), users=userlist, 
+			listwording=" is reccomended because you have this many mutual friends: ")
 
 @app.route("/addfriend", methods=['POST'])
 @flask_login.login_required
@@ -803,7 +863,7 @@ def add_friend():
 		friendlist = []
 		for i in range(len(friend_emails)):
 			friendlist.append((friend_names[i], friend_emails[i]))
-		return render_template('userlist.html', name=getCurrentName(), friends=friendlist)
+		return render_template('friends.html', name=getCurrentName(), friends=friendlist)
 	else:
 		print("couldn't find all tokens")
 		return render_template('addfriend.html', name=getCurrentName(), message="User not found, please try again.")

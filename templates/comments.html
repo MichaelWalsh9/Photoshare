@@ -21,7 +21,7 @@
 
 <div id="photo" style="display:none">
     <li>{{photo[2]}}<br>
-        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
+        <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
     <ul>
 </div>
 

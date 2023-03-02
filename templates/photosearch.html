@@ -1,0 +1,22 @@
+<!-- author Michael Walsh (mpw9@bu.edu) -->
+<!-- HTML of comments search for PhotoShare -->
+<!doctype html>
+<title>Photo Search</title>
+<li><a href='/'>Home</a></li>
+<div>
+    <h1>Search for Photos</h1>
+</div>
+<div>
+    <form method="post" action="{{ url_for('photosearch') }}">
+        <label for="search_photo">Search for photos by a series of tags: </label>
+        <input type="text" name="search_photo" placeholder="ex: friends boston">
+        <input type="submit">
+    </form>
+</div>
+<h3>Here is a list of possible tags to search: </h2>
+{% if taglist %}
+    {% for tag in taglist %}
+        <li>{{tag}}</li>
+    {% endfor %}
+{% endif %}
+

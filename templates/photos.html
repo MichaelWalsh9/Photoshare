@@ -24,6 +24,7 @@
     <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
       <li>Caption: {{photo[2]}}<br>
       {{photo[3]}} Likes
+      {% if not can_edit %}
       <form method="post" action="{{ url_for('photos') }}">
         <input type="hidden" name="photoid" value={{photo[1]}}>
         <input type="hidden" name="iscomments" value="True">
@@ -33,6 +34,14 @@
         <input type="hidden" name="photoid" value={{photo[1]}}>
         <input type="submit" value="Like/Unlike"/>
       </form>
+      {% endif %}
+      {% if can_edit %}
+        <form method="post" action="{{ url_for('photos') }}">
+          <input type="hidden" name="photoid" value={{photo[1]}}>
+          <input type="hidden" name="delphoto" value="True">
+          <input type="submit" value="Delete Photo"/>
+        </form>
+      {% endif %}
       <br>
       <br>
       <br>
