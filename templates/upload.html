@@ -1,5 +1,11 @@
 <!-- author ben lawson (balawson@bu.edu) -->
 <!-- HTML page for uploading photos to PhotoShare -->
+<style>
+    form  { display: table;      }
+    p     { display: table-row;  }
+    label { display: table-cell; }
+    input { display: table-cell; }
+</style>
 {% if message %}
   <h4>{{message}}!</h4>
 {% endif %}
@@ -9,18 +15,31 @@
     <body>
         <div class="title">
             <h1>Upload a photo to Photoshare</h1>
+            <li><a href='/'>Home</a></li>
+            <br>
         </div>
             <form method="post" enctype="multipart/form-data" action="/upload">
-                <label for="photo">Select photo:</label>
-                <input type="file" name="photo" required='true' /><br />
-                <label for="caption">Please caption:</label>
-                <input type="text" name="caption" required='true' /><br />
-                <label for="asalbum">In my album:</label>
-                <input type="text" name="asalbum" required='true' /><br />
-                <label for="tags">With Tags:</label>
-                <input type="text" name="tags"/><br />
-                <input type="submit" value="Upload" />
+                <p>
+                    <label for="photo">Photo:</label>
+                    <input type="file" name="photo" required='true' /><br />
+                </p>
+                <p>
+                    <label for="caption">Caption:</label>
+                    <input type="text" name="caption" required='true' /><br />
+                </p>
+                <p>
+                    <label for="asalbum">Album:</label>
+                    <input type="text" name="asalbum" required='true' /><br />
+                </p>
+                <p>
+                    <label for="tags">Tags:</label>
+                    <input type="text" name="tags"/><br />
+                </p>
+                <br>
+                <p>
+                    <label for="submit"></label>
+                    <input type="submit" name="submit" value="Upload" />
+                </p>
             </form>
     </body>
 
-    <a href='/'>Home</a>

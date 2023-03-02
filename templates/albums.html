@@ -23,7 +23,7 @@
                     <li>
                       {{album[1]}}
                       <form method="post" action="{{ url_for('my_albums') }}">
-                        <input type="hidden" name="album_edit" value={{album[1]}}>
+                        <input type="hidden" name="album_edit" value={{album[0]}}>
                         <input type="submit" value="Edit Album"/>
                       </form>
                     </li>

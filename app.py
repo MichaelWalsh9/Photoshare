@@ -133,6 +133,10 @@ def Reduce(list):
 	tuplelist = quickSortTuples(tuplelist)
 	return tuplelist
 
+# Removes all occurences of a value in a list
+def RemoveValue(list, value):
+	return [i for i in list if i != value]
+
 ###########################################################################################################################################
 
 # Returns a list of all tags
@@ -517,19 +521,12 @@ def myalbums():
 def my_albums():
 	uid = getCurrentUid()
 	try:
-		target_album_name = request.form.get('album_edit')
+		target_album = request.form.get('album_edit')
 	except:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
-	test = doesMyAlbumExist(target_album_name, uid)
-	if test:
-		target_album_id = getAlbumIDFromName(target_album_name, uid)
-		return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(target_album_id), 
-			 base64=base64, album_name = [target_album_name], can_edit=True)
-	else:
-		print("couldn't find all tokens")
-		return render_template('albums.html', name=getCurrentName(), 
-				message="Please input a valid album name!", albums=getUserAlbums(uid))
+	return render_template('photos.html', name=getCurrentName(), photos=getAlbumPhotos(target_album), 
+			base64=base64, album_name = getAlbumNameFromID(target_album), can_edit=True)
 
 # Add album route
 @app.route('/addalbum')
@@ -699,14 +696,20 @@ def leave_comments():
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
 	cursor = conn.cursor()
-
+	message = "You cannot comment on your own photos"
 	try:
 		# For logged in Users
 		uid = getCurrentUid()
-		print(cursor.execute("INSERT INTO Comments (text, p_id, owner_id) VALUES ('{0}', '{1}', '{2}')".format(usercomment, commentphoto, uid)))
+		owner = getAttributesByKey('user_id', 'Pictures', 'picture_id', commentphoto)[0]
+		print("owner: ", owner)
+		print("uid: ", uid)
+		if (uid != owner):
+			print(cursor.execute("INSERT INTO Comments (text, p_id, owner_id) VALUES ('{0}', '{1}', '{2}')".format(usercomment, commentphoto, uid)))
+			message = "Your comment has been added to the thread"
 	except:
 		# For guests
 		print(cursor.execute("INSERT INTO Comments (text, p_id) VALUES ('{0}', '{1}')".format(usercomment, commentphoto)))
+		message = "Your comment has been added to the thread"
 		
 	conn.commit()
 
@@ -714,7 +717,8 @@ def leave_comments():
 	
 	photodata = getPhotosByIDs([commentphoto])[0]
 
-	return render_template('comments.html', comments=commentslist, likes=getLikesOnPhoto(commentphoto), photo=photodata, base64=base64)
+	return render_template('comments.html', comments=commentslist, likes=getLikesOnPhoto(commentphoto), 
+			photo=photodata, message=message, base64=base64)
 
 
 ###########################################################################################################################################
@@ -916,6 +920,7 @@ def search_comments():
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
 	cuids = getCommentUsersbyText(searchterm)
+	cuids = RemoveValue(cuids, None)
 	reduced = Reduce(cuids)
 	userlist = getCommentUserListInfo(reduced)
 	return render_template('userlist.html', users=userlist, listwording=", number of times commented: ", term=searchterm)
