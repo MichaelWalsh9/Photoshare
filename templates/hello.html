@@ -1,8 +1,31 @@
 <!-- author ben lawson (balawson@bu.edu) -->
 <!-- HTML of home page for PhotoShare -->
 <!doctype html>
+<style>
+  body {
+    background-color: rgb(60, 60, 60);
+    }
+    h1, h2, h3, h4, li, b {
+        color: antiquewhite;
+    }
+    a {
+        color: orange;
+    }
+    input[type=button], input[type=submit] {
+        background-color: orange;
+        color: antiquewhite;
+        border: antiquewhite;
+        padding: 10px 10px;
+        text-shadow: 0 0 2px rgb(60, 60, 60);
+    }
+    img {
+      border : 4px solid antiquewhite;
+      max-width: 20%;
+      max-height: 20%;
+    }
+</style>
 {% if message %}
-  <h4>{{message}}!</h4>
+  <h3>{{message}}!</h3>
 {% endif %}
 <title>Photoshare</title>
 {% if name %}
@@ -21,14 +44,15 @@
   <li><a href='/searchcomments'>Search Comments</a></li>
   <br>
   {% if name %}
-    <b> Personalized Content </b>    
-    <li><a href='/privatetagsearch'>Search Tags for My Photos</a></li>
-    <li><a href='/suggestedphotos'>You-may-also-like</a></li>
+    <b> Content for You: </b>    
+    <li><a href='/privatetagsearch'>Search My Photos by Tag</a></li>
+    <li><a href='/suggestedphotos'>Suggested Photos</a></li>
     <br>
     <b> Create and Edit Content: </b>
     <li><a href='/albums'>My Albums</a> </li>
     <li><a href='/friends'>My Friends</a></li>
     <br>
+    <b> Logout: </b>
     <li><a href='/logout'>Logout</a></li>
   {% endif %}
 </ul>

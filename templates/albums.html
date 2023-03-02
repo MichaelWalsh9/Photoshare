@@ -3,6 +3,29 @@
 <head>
   <title>My Albums</title>
 </head>
+<style>
+  body {
+    background-color: rgb(60, 60, 60);
+    }
+    h1, h2, h3, h4, li, b {
+        color: antiquewhite;
+    }
+    a {
+        color: orange;
+    }
+    input[type=button], input[type=submit] {
+        background-color: orange;
+        color: antiquewhite;
+        border: antiquewhite;
+        padding: 10px 10px;
+        text-shadow: 0 0 2px rgb(60, 60, 60);
+    }
+    img {
+      border : 4px solid antiquewhite;
+      max-width: 20%;
+      max-height: 20%;
+    }
+</style>
 {% if message %}
 <h4>{{message}}!</h4>
 {% endif %}
@@ -21,10 +44,9 @@
               <ul>
               {% for album in albums %}
                     <li>
-                      {{album[1]}}
                       <form method="post" action="{{ url_for('my_albums') }}">
                         <input type="hidden" name="album_edit" value={{album[0]}}>
-                        <input type="submit" value="Edit Album"/>
+                        <input type="submit" value="Edit {{album[1]}}"/>
                       </form>
                     </li>
               {% endfor %}

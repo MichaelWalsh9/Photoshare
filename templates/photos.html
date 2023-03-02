@@ -1,6 +1,29 @@
 <!-- author Michael Walsh (mpw9@bu.edu) -->
 <!-- HTML page for viewing photos in PhotoShare -->
 <!doctype html>
+<style>
+  body {
+    background-color: rgb(60, 60, 60);
+    }
+    h1, h2, h3, h4, li, b {
+        color: antiquewhite;
+    }
+    a {
+        color: orange;
+    }
+    input[type=button], input[type=submit] {
+        background-color: orange;
+        color: antiquewhite;
+        border: antiquewhite;
+        padding: 10px 10px;
+        text-shadow: 0 0 2px rgb(60, 60, 60);
+    }
+    img {
+      border : 4px solid antiquewhite;
+      max-width: 20%;
+      max-height: 20%;
+    }
+</style>
 {% if message %}
   <h4>{{message}}!</h4>
 {% endif %}
@@ -21,16 +44,15 @@
 <h2>Here are the photos for {{album_name[0]}}</h2>
     <ul>
     {% for photo in photos %}
-    <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' style="max-width:300px; max-height:300px"/></li>
-      <li>Caption: {{photo[2]}}<br>
-      {{photo[3]}} Likes
+    <li>Caption: {{photo[2]}} | {{photo[3]}} Likes <br>
+    <img src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}'/></li>
       {% if not can_edit %}
-      <form method="post" action="{{ url_for('photos') }}">
+      <form method="post" action="{{ url_for('photos') }}" style="display:inline">
         <input type="hidden" name="photoid" value={{photo[1]}}>
         <input type="hidden" name="iscomments" value="True">
         <input type="submit" value="View Likes and Comments"/>
       </form>
-      <form method="post" action="{{ url_for('photos') }}">
+      <form method="post" action="{{ url_for('photos') }}" style="display:inline">
         <input type="hidden" name="photoid" value={{photo[1]}}>
         <input type="submit" value="Like/Unlike"/>
       </form>

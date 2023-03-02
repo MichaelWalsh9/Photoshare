@@ -3,6 +3,33 @@
 <head>
     <title>Create an album!</title>
 </head>
+<style>
+    form  { display: table;      }
+    p     { display: table-row;  }
+    label { display: table-cell; }
+    input { display: table-cell; }
+    body {
+        background-color: rgb(60, 60, 60);
+    }
+    h1, h2, h3, h4, li, b, p, label {
+        color: antiquewhite;
+    }
+    a {
+        color: orange;
+    }
+    input[type=button], input[type=submit] {
+        background-color: orange;
+        color: antiquewhite;
+        border: antiquewhite;
+        padding: 10px 10px;
+        text-shadow: 0 0 2px rgb(60, 60, 60);
+    }
+    img {
+      border : 4px solid antiquewhite;
+      max-width: 20%;
+      max-height: 20%;
+    }
+</style>
 {% if name %}
   <h1>Hello {{ name }}!</h1>
 {% endif %}
@@ -15,9 +42,13 @@
         </div>
         <div id="content">
             <form method="post" action="{{ url_for('add_album') }}">
-                <label for="album_name">Enter the name of your new album:</label>
-                <input type="text" name="album_name" /><br />
-                <input type="submit" />
+                <p>
+                    <label for="album_name">Enter the name of your new album:</label>
+                    <input type="text" name="album_name" /> <br />
+                </p>
+                <p>
+                    <input type="submit" name="submission"/>
+                </p>
             </form>
          </div>
     </body>

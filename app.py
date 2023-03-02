@@ -163,7 +163,7 @@ def getUserPhotosbyTag(tag, uid):
 		cursor.execute("SELECT picture_id FROM Pictures WHERE picture_id = '{0}' AND user_id = '{1}'".format(pid, uid))
 		result = cursor.fetchone()
 		if result != None:
-			userphotos.append(cursor.fetchone()[0])
+			userphotos.append(result[0])
 	return userphotos
 
 def getTagScore(tag):
@@ -440,10 +440,45 @@ def Rank(list):
 def login():
 	if flask.request.method == 'GET':
 		return '''
+				<style>
+					form  { display: table;      }
+					p     { display: table-row;  }
+					label { display: table-cell; }
+					input { display: table-cell; }
+					body {
+						background-color: rgb(60, 60, 60);
+					}
+					h1, h2, h3, h4, li, b, p, label {
+						color: antiquewhite;
+					}
+					a {
+						color: orange;
+					}
+					input[type=button], input[type=submit] {
+						background-color: orange;
+						color: antiquewhite;
+						border: antiquewhite;
+						padding: 10px 10px;
+						text-shadow: 0 0 2px rgb(60, 60, 60);
+					}
+					img {
+					border : 4px solid antiquewhite;
+					max-width: 20%;
+					max-height: 20%;
+					}
+				</style>
 			   <form action='login' method='POST'>
-				<input type='text' name='email' id='email' placeholder='email'></input>
-				<input type='password' name='password' id='password' placeholder='password'></input>
-				<input type='submit' name='submit'></input>
+			   	<p>
+				   <label for="email">Enter your email:</label>
+					<input type='text' name='email' id='email' placeholder='email'></input>
+				</p>
+				<p>
+					<label for="password">Enter your password:</label>
+					<input type='password' name='password' id='password' placeholder='password'></input>
+				</p>
+				<p>
+					<input type='submit' name='submit'></input>
+				</p>
 			   </form></br>
 		   <a href='/'>Home</a>
 			   '''
@@ -878,13 +913,15 @@ def add_friend():
 	except:
 		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
 		return flask.redirect(flask.url_for('hello'))
-	cursor = conn.cursor() 
 	test =  isEmailRegistered(friend_email)	
 	if test:
 		fid = getUserIdFromEmail(friend_email)
 		uid = getCurrentUid()
-		print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
-		conn.commit()
+		friends = getUsersFriends(uid)
+		if fid not in friends:
+			cursor = conn.cursor() 
+			print(cursor.execute("INSERT INTO Friends (user_id, frnd_id) VALUES ('{0}', '{1}')".format(uid, fid)))
+			conn.commit()
 		friend_emails = getFriendsEmails(getCurrentUid())
 		friend_names = []
 		for email in friend_emails:
