@@ -82,8 +82,3 @@ CREATE TABLE TaggedWith (
     FOREIGN KEY (tag) REFERENCES Tags(Word) ON DELETE CASCADE,
     FOREIGN KEY (p_id) REFERENCES Pictures(picture_id) ON DELETE CASCADE
 );
-
-
-
-INSERT INTO Users (email, password, fname, lname) VALUES ('test@bu.edu', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'John', 'Doe');
-INSERT INTO Users (email, password, fname, lname) VALUES ('test1@bu.edu', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'Jane', 'Roe');

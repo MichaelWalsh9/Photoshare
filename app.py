@@ -152,9 +152,7 @@ def getAllPhotosbyTag(tag):
 
 # Returns a list of all photo ids with a given tag owned by a user with a given uid
 def getUserPhotosbyTag(tag, uid):
-	print(tag, uid)
 	allphotos = getAllPhotosbyTag(tag)
-	print("allphotos in getUserPhotosbyTag: ", allphotos)
 	userphotos = []
 	for pid in allphotos:
 		cursor = conn.cursor()
@@ -162,7 +160,6 @@ def getUserPhotosbyTag(tag, uid):
 		result = cursor.fetchone()
 		if result != None:
 			userphotos.append(cursor.fetchone()[0])
-	print("userphotos in getUserPhotosbyTag: ", userphotos)
 	return userphotos
 
 def getTagScore(tag):
@@ -171,12 +168,21 @@ def getTagScore(tag):
 	tagscore = cursor.fetchone()[0]
 	return tagscore
 
+def getSuggestedTags(uid):
+	pids = getUsersPhotos(uid)
+	rawtags = []
+	for pid in pids:
+		tags = getAttributesByKey('tag', 'TaggedWith', 'p_id', pid)
+		rawtags.append(tags)
+	rankedtags = Rank(rawtags)
+	return rankedtags[:3]
+
 ###########################################################################################################################################
 
 def getUsersPhotos(uid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT picture_id FROM Pictures WHERE user_id = '{0}'".format(uid))
-	return cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
+	return D2D(cursor.fetchall()) 
 
 def getPhotosByIDs(pids):
 	photo_list = []
@@ -318,14 +324,10 @@ def getUserScore(uid):
 	cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}'".format(uid))
 	cscore = cursor.fetchone()[0]
 	pids = getUsersPhotos(uid)
-	pids = D2D(pids)
 	dock = 0
 	for pid in pids:
 		cursor.execute("SELECT COUNT(c_id) FROM Comments WHERE owner_id = '{0}' AND p_id = '{1}'".format(uid, pid))
 		dock = dock + (cursor.fetchone()[0])
-	print("pscore: ", pscore)
-	print("cscore: ", cscore)
-	print("dock: ", dock)
 	return pscore + (cscore - dock)
 
 def getTopUserListInfo(uids):
@@ -422,6 +424,9 @@ def quickSortTuples(list):
 			high.append(element)
 	return quickSortTuples(low) + same + quickSortTuples(high)
 
+# Takes a 2D-list, returns a sorted list of tuples (r, e) where r is the number of times e appears across the entire 2D list for each element e
+def Rank(list):
+	return quickSortTuples(Reduce(D2D(list)))
 
 ############################################################################################################################################
 # 	NAVIGATION AND FUNCTIONAL CODE	 #######################################################################################################
@@ -624,7 +629,13 @@ def view_comments():
 		try: 
 			uid = getCurrentUid()
 		except:
-			return render_template('register.html', supress='True', message="You must create an account to like photos")			
+			return render_template('register.html', supress='True', message="You must create an account to like photos")
+		
+		owner = getAttributesByKey('user_id', 'Pictures', 'picture_id', target_photo)[0]
+		print("owner: ", owner)
+		print("uid: ", uid)
+		if (uid == owner):
+			return render_template('allalbums.html', albums=AlbumNameList, message="You cannot like your own photos, narcissist")			
 		if (hasUserLikedPhoto(target_photo, uid) == False):
 			# User likes photo
 			cursor = conn.cursor()
@@ -653,6 +664,11 @@ def like_photo():
 		email = email[0]
 		AlbumNameList.append(album + (getFullNameFromEmail(email),))
 	uid = getCurrentUid()
+	owner = getAttributesByKey('user_id', 'Pictures', 'picture_id', target_photo)
+	print("owner: ", owner)
+	print("uid: ", uid)
+	if (uid == owner):
+		return render_template('allalbums.html', albums=AlbumNameList) 
 	if hasUserLikedPhoto():
 		# User likes photo
 		cursor = conn.cursor()
@@ -767,7 +783,6 @@ def privatetag_search():
 	except:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
-	print(tag)
 	pids = getUserPhotosbyTag(tag, getCurrentUid())
 	photolist = getPhotosByIDs(pids)	
 	return render_template('photos.html', photos=photolist, album_name = [tag], base64=base64)
@@ -778,21 +793,38 @@ def photosearch():
 	return render_template('photosearch.html', taglist=tags)
 
 @app.route('/photosearch', methods=['POST'])
-def photosearch():
+def photo_search():
 	try:
 		search = request.form.get('search_photo')
 	except:
 		print("couldn't find all tokens")
 		return flask.redirect(flask.url_for('hello'))
-	print("search: ", search)
-	query = search.lower()
-	query = query.split()
-	print("query: ", query)
-	
+	tags = (search.lower()).split()
+	photo_ids = []
+	for tag in tags:
+		photo_ids.append(getAllPhotosbyTag(tag))
+	reduced = Rank(photo_ids)
+	pids = []
+	for tuple in reduced:
+		if tuple[0] == len(tags):
+			pids.append(tuple[1])
+	photolist = getPhotosByIDs(pids)
 	return render_template('photos.html', name=getCurrentName(), photos=photolist, 
-			 base64=base64, album_name = search)
+			 base64=base64, album_name = [search])
 
-
+@app.route('/suggestedphotos')
+def suggestedphotos():
+	tags = getSuggestedTags(getCurrentUid())
+	photo_ids = []
+	for tag in tags:
+		photo_ids.append(getAllPhotosbyTag(tag[1]))
+	reduced = Rank(photo_ids)
+	pids = []
+	for tuple in reduced:
+		pids.append(tuple[1])
+	photolist = getPhotosByIDs(pids)
+	return render_template('photos.html', name=getCurrentName(), photos=photolist, 
+			 base64=base64, album_name = ["you!"])
 
 
 ###########################################################################################################################################
@@ -822,22 +854,15 @@ def friend():
 @flask_login.login_required
 def addfriend():
 	uid = getCurrentUid()
-	print("uid: ", uid)
 	friendslist = getUsersFriends(uid)
-	print("friendslist: ", friendslist)
 	fof = []
 	for friend in friendslist:
 		friendoffriend = getUsersFriends(friend)
-		print(friendoffriend)
 		fof.append(friendoffriend)
-	print("fof: ", fof)
-	reduced = quickSortTuples(Reduce(D2D(fof)))
-	print("reduced: ", reduced)
+	reduced = Rank(fof)
 	userlist = []
 	for tuple in reduced: 
-		print(tuple)
 		userlist.append((tuple[0], tuple[1], getEmailFromUserID(tuple[1])[0], getFullNameFromEmail(getEmailFromUserID(tuple[1])[0])))
-	print("userlist: ", userlist)
 	return render_template('addfriend.html', name=getCurrentName(), users=userlist, 
 			listwording=" is reccomended because you have this many mutual friends: ")
 
@@ -928,10 +953,7 @@ def upload_file():
 			 base64=base64, album_name = [target_album_name], can_edit=True)
 		tags = tags.lower()
 		taglist = tags.split()
-		print(taglist, "!!")
-		print(tagExists(taglist[0]), "....")
 		for tag in taglist:
-			print(tagExists(tag), "??")
 			if tagExists(tag):
 				print('''INSERT INTO TaggedWith (tag, p_id) VALUES (%s, %s)''', (tag, pid))
 				cursor.execute('''INSERT INTO TaggedWith (tag, p_id) VALUES (%s, %s)''', (tag, pid))
