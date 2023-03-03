@@ -79,6 +79,16 @@
 
 <br>
 
+{% if tags %}
+    <h2>This photo is tagged with:</h2>
+    {% for tag in tags %}
+        <li>{{tag}}
+    {% endfor %}
+    </ul>
+{% else %}
+    <h2>This photo has no tags</h2>
+{% endif %}
+
 {% if likes %}
     <h2>Users who have liked this photo:</h2>
     {% for like in likes %}
