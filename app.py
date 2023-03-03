@@ -853,11 +853,21 @@ def photo_search():
 
 @app.route('/suggestedphotos')
 def suggestedphotos():
-	tags = getSuggestedTags(getCurrentUid())
-	photo_ids = []
+	uid = getCurrentUid()
+	tags = getSuggestedTags(uid)
+	allphoto_ids = []
+	userphoto_ids = []
 	for tag in tags:
-		photo_ids.append(getAllPhotosbyTag(tag[1]))
-	reduced = Rank(photo_ids)
+		allphoto_ids.append(getAllPhotosbyTag(tag[1]))
+		userphoto_ids.append(getUserPhotosbyTag(tag[1], uid))
+	allphoto_ids = D2D(allphoto_ids)
+	userphoto_ids = D2D(userphoto_ids)
+	print("allphoto_ids: ", allphoto_ids)
+	print("userphoto_ids: ", userphoto_ids)
+	for pid in userphoto_ids:
+		allphoto_ids = RemoveValue(allphoto_ids, pid)
+	print("allphoto_ids post-processing: ", allphoto_ids)
+	reduced = quickSortTuples(Reduce(allphoto_ids))
 	pids = []
 	for tuple in reduced:
 		pids.append(tuple[1])
